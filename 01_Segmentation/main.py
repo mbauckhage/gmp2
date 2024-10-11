@@ -36,7 +36,7 @@ connected_result = find_connected_components(flood_result, blob_threshold_size=1
 
 skeleton_result = skeletonize_image(connected_result,save_path=skeleton_img_path) 
 
-skeleton_traces = skeleton_trace(skeleton_img_path,image_file_path,output_path_geojson,skeleton_trace_iterations)
+skeleton_traces = skeleton_trace(skeleton_img_path,image_file_path,output_path_geojson,skeleton_trace_iterations,overwrite=True)
 
 plt.imshow(skeleton_traces)
 plt.show()

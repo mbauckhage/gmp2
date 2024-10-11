@@ -11,6 +11,7 @@ from skimage.morphology import skeletonize
 from trace_skeleton import *
 from pyproj import Transformer
 from rasterio.crs import CRS
+import random
 
 from utils.segmentation import plot_images, crop_image, mask_image, mask_flood_fill
 import os
