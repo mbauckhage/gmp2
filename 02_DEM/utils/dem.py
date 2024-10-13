@@ -64,7 +64,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
 
 
 
-def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
+def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe',min_nonzero_value=450):
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
 
@@ -107,6 +107,19 @@ def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EP
         fill=0,  # Background value
         dtype=rasterio.float32
     )
+    
+    # Calculate the maximum value for the normalization
+    max_value = raster.max()
+
+    # Normalize the raster to [0, 255] using the provided min_nonzero_value and the raster's maximum value
+    raster_normalized = np.where(
+        raster > 0,  # Only normalize non-zero values
+        (raster - min_nonzero_value) / (max_value - min_nonzero_value) * 255,
+        0  # Set background or zero values to 0
+    )
+    
+     # Clip values below 0 to 0, and above 255 to 255
+    raster_normalized = np.clip(raster_normalized, 0, 255)
 
     # Calculate how many 512x512 tiles are needed
     num_tiles_x = int(np.ceil(width / 512))
@@ -122,15 +135,11 @@ def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EP
             end_y = min(start_y + 512, height)
 
             # Extract the tile from the raster
-            tile = raster[start_y:end_y, start_x:end_x]
-
-            # Normalize the tile to [0, 255] for PNG output
-            tile_normalized = (tile - tile.min()) / (tile.max() - tile.min()) * 255
-            tile_normalized = tile_normalized.astype(np.uint8)
+            tile = raster_normalized[start_y:end_y, start_x:end_x]
 
             # Create a 512x512 image (pad with zeros if the tile is smaller)
             tile_padded = np.zeros((512, 512), dtype=np.uint8)
-            tile_padded[:tile_normalized.shape[0], :tile_normalized.shape[1]] = tile_normalized
+            tile_padded[:tile.shape[0], :tile.shape[1]] = tile.astype(np.uint8)
 
             # Convert the tile to a PIL image
             img = Image.fromarray(tile_padded, mode='L')  # 'L' for grayscale
@@ -138,4 +147,25 @@ def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EP
             # Save the image with a filename based on the tile indices
             img.save(os.path.join(output_dir, f'tile_{tile_y}_{tile_x}.png'))
 
+
     print(f"Tiles saved to {output_dir}")
+
+
+
+import geopandas as gpd
+
+def get_min_height_from_geojson(geojson_path, height_attribute='hoehe'):
+    # Read the GeoJSON as a GeoDataFrame
+    gdf = gpd.read_file(geojson_path)
+
+    # Ensure the GeoDataFrame has a 'hoehe' column
+    if height_attribute not in gdf.columns:
+        raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
+
+    # Extract the height column
+    heights = gdf[height_attribute]
+
+    # Get the minimum non-zero height value
+    min_height = heights[heights > 0].min()
+
+    return min_height
