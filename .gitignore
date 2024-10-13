@@ -1,3 +1,4 @@
 00_Data
 */data/*
-*/output/*
+01_Segmentation/output/*
+.DS_Store
