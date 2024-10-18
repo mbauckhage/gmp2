@@ -2,3 +2,4 @@
 */data/*
 01_Segmentation/output/*
 .DS_Store
+*.onnx
