@@ -1,3 +1,4 @@
 02_DEM/output/output_height_raster.tiff filter=lfs diff=lfs merge=lfs -text
 02_DEM/output/*.tiff filter=lfs diff=lfs merge=lfs -text
 00_Transfer/* filter=lfs diff=lfs merge=lfs -text
+*.dll filter=lfs diff=lfs merge=lfs -text
