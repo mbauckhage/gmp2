@@ -7,6 +7,7 @@ using Unity.Barracuda;
 using OpenCvSharp;
 using Unity.Mathematics;
 using System.Runtime.InteropServices;
+using UnityEditor;
 
 namespace MappingAI
 {
@@ -47,8 +48,8 @@ namespace MappingAI
 
         protected IWorker _engine;
         protected Prediction prediction;
-        [SerializeField]
-        protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\test.png"; // Path to the TXT file
+        //[SerializeField]
+        protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tile_8_11.png"; // Path to the TXT file
         protected float[] predicted_result;
         protected float[] input_public;
         protected Texture2D inputDataTexture;
@@ -130,14 +131,19 @@ namespace MappingAI
         public async void ExecuteInferenceAsyncTest()
         {
             await Task.WhenAll(AsyncExecuteInferenceTaskFromPNG());
-            //await Task.WhenAll(AsyncVisualizeMeshFromPNG(AIGeneratedModelContainer, StrokeModelContainer, "Assets/3DMappingAI/AI Model/1.png", "Assets/3DMappingAI/AI Model/6.png"));
+            //await Task.WhenAll(AsyncVisualizeMeshFromPNG(AIGeneratedModelContainer, StrokeModelContainer, "Assets/3DMappingAI/AI Model/output_height_raster", "Assets/3DMappingAI/AI Model/output_height_raster.tiff"));
         }
-        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(float[] inputData, float[] predicted_result)
+        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(float[] inputData, float[] predicted_result, string inputFilePath)
         {
             (var heightMapTexture, var heightmapGradientTexture, var inputDataTexture) = ColorManager.Create1DHeightMapTexture(predicted_result, inputChunkSize, heightmapGradient, inputData);
             (var rescaled_predicted_heightmap, Mesh mesh) = HeightMapProcessor.ScaleHeightMap_GenerateMesh(inputData, predicted_result, inputChunkSize, scaleRatio);
+
+            // Export the predicted heightmap as a TIFF using the input file's name
+            ExportHeightMap(rescaled_predicted_heightmap, inputFilePath);
+
             return (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh);
         }
+
         private async Task AsyncExecuteInferenceTaskFromPNG()
         {
             string path = inputFilePath;
@@ -153,10 +159,16 @@ namespace MappingAI
             TimeSpan elapsed = stopwatch.Elapsed;
             UnityEngine.Debug.Log($"Execution Time RunInference: {elapsed.TotalMilliseconds} ms");
             predicted_result = prediction.predicted;
+
+
+            // Todo: export predict_result for further processing
+
             Mesh mesh;
-            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(input_public, predicted_result);
+            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(input_public, predicted_result, path);
             //(heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(predicted_result);
             await Task.Yield();
+
+            // Set the material to the mesh
             Material m = ReliefShadingMaterial;
             m.SetTexture("_MainTex", heightmapGradientTexture);
             m.SetTexture("_HeightMap", heightMapTexture);
@@ -164,8 +176,11 @@ namespace MappingAI
             AIGeneratedModelContainerMeshRenderer.material = m;
             await Task.WhenAll(AsyncGenerateTerrainTask(rescaled_predicted_heightmap, AIGeneratedModelContainer));
             //await Task.WhenAll(AsyncGenerateTerrainTask(mesh, AIGeneratedModelContainer, rescaled_predicted_heightmap.GetLength(0), rescaled_predicted_heightmap.GetLength(1)));
-            await Task.WhenAll(AsyncGenerateTerrainTask(ReshapeArray(input_public), StrokeModelContainer));
+            //await Task.WhenAll(AsyncGenerateTerrainTask(ReshapeArray(input_public), StrokeModelContainer));
+
+            
         }
+        // placing the mesh in the center of the terrain
         protected async Task AsyncGenerateTerrainTask(float[,] heightMap, GameObject gameObject)
         {
             Mesh mesh = MeshGenerator.GenerateMeshFlip(heightMap, out int width, out int height);
@@ -183,7 +198,35 @@ namespace MappingAI
             // reset the position and localscale
             gameObject.transform.localPosition = Vector3.zero;
             gameObject.transform.localPosition = new Vector3(0 - 0.5f * offset, 0, 0 - 0.5f * offset); //offset the model into center
+
+            // save the mesh as an asset
+            SaveMeshAsset(mesh, "DEM_Mesh.asset");
         }
+
+
+        private void SaveMeshAsset(Mesh mesh, string assetName)
+        {
+#if UNITY_EDITOR // Ensure this only runs in the Unity Editor
+            string path = "Assets/3DMappingAI/Meshes/" + assetName;
+
+            // Check if the folder exists, if not, create it
+            if (!AssetDatabase.IsValidFolder("Assets/3DMappingAI"))
+            {
+                AssetDatabase.CreateFolder("Assets", "3DMappingAI");
+            }
+            if (!AssetDatabase.IsValidFolder("Assets/3DMappingAI/Meshes"))
+            {
+                AssetDatabase.CreateFolder("Assets/3DMappingAI", "Meshes");
+            }
+
+            // Save the DEM mesh as an asset
+            AssetDatabase.CreateAsset(mesh, path);
+            AssetDatabase.SaveAssets();
+
+            UnityEngine.Debug.Log($"DEM Mesh saved as {path}");
+#endif
+        }
+
         public Tuple<float, float> GetXZBounds()
         {
 
@@ -338,6 +381,56 @@ namespace MappingAI
             }
             return data1D;
         }
+
+        private void ExportHeightMap(float[,] heightMap, string inputFilePath)
+        {
+            // Extract the filename without extension
+            string fileName = Path.GetFileNameWithoutExtension(inputFilePath);
+
+            // Define the output file name (prepended with 'height_map_')
+            string outputFileName = $"height_map_{fileName}.tif";
+
+            // Define the output directory (you can modify this path if necessary)
+            string directoryPath = "Assets/3DMappingAI/HeightMaps/";
+
+            // Ensure the directory exists
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // Combine directory and filename to get the full path
+            string outputFilePath = Path.Combine(directoryPath, outputFileName);
+
+            int width = heightMap.GetLength(0);
+            int height = heightMap.GetLength(1);
+
+            // Create an empty Mat to store the image data
+            Mat image = new Mat(height, width, MatType.CV_32FC1); // 32-bit float single-channel matrix
+
+            // Populate the image with the height map data
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    image.Set(i, j, heightMap[i, j]); // Set the pixel value (normalized height data)
+                }
+            }
+
+            // Normalize the image between 0 and 1 if necessary (for grayscale)
+            Cv2.Normalize(image, image, 0, 1, NormTypes.MinMax);
+
+            // Convert the float image to 8-bit for saving as TIFF
+            Mat image8Bit = new Mat();
+            image.ConvertTo(image8Bit, MatType.CV_8UC1, 255.0);
+
+            // Save the image as TIFF
+            Cv2.ImWrite(outputFilePath, image8Bit);
+
+            UnityEngine.Debug.Log($"Height map exported as TIFF to {outputFilePath}");
+        }
+
+
     }
 
 }
