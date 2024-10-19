@@ -49,7 +49,7 @@ namespace MappingAI
         protected IWorker _engine;
         protected Prediction prediction;
         //[SerializeField]
-        protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tile_8_11.png"; // Path to the TXT file
+        protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles\\tile_8_11.png"; // Path to the TXT file
         protected float[] predicted_result;
         protected float[] input_public;
         protected Texture2D inputDataTexture;
