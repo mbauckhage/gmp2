@@ -1,4 +1,5 @@
 from utils.dem import *
+import os
 
 
 input_geojson_path = "data/test_lines.geojson"
@@ -6,8 +7,36 @@ output_tiff_path = "output/output_height_raster.tiff"
 output_png_path = "output/"
 
 
-min_height = get_min_height_from_geojson(input_geojson_path)
+#min_height = get_min_height_from_geojson(input_geojson_path)
 
-print(min_height)
+#print(min_height)
 #geojson_to_tiff(input_geojson_path, output_tiff_path,resolution=0.1, input_crs='EPSG:2056', height_attribute='hoehe')
-geojson_to_png_tiles(input_geojson_path, output_png_path,resolution=0.1, input_crs='EPSG:2056', height_attribute='hoehe',min_nonzero_value=min_height)
+#geojson_to_png_tiles(input_geojson_path, output_png_path,resolution=0.1, input_crs='EPSG:2056', height_attribute='hoehe',min_nonzero_value=min_height)
+
+
+import os
+import rasterio
+
+tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/raw_tiles"
+output_image_path = "output/height_map_from_tiles.png"
+
+# Get list of all files in the tile directory
+tile_files = os.listdir(tile_dir)
+
+
+    
+"""tile_coords = [tuple(map(int, f.split('.')[0].split('_')[1:])) for f in tile_files if f.startswith('tile')]
+
+# Calculate the number of tiles in x and y directions
+num_tiles_x = max(x for _, x in tile_coords) + 1
+num_tiles_y = max(y for y, _ in tile_coords) + 1
+
+print(num_tiles_x)
+print(num_tiles_y)"""
+
+with rasterio.open(output_tiff_path) as src:
+    original_width = src.width
+    original_height = src.height
+
+
+stitch_tiles(tile_dir, output_image_path,original_width, original_height)

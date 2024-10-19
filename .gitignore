@@ -8,5 +8,6 @@
 01_Segmentation/*.tif
 02_DEM/output/
 **/__pycache__/
+02_DEM/utils/__pycache__/
 **/.DS_Store
 **/logs/
