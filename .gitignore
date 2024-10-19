@@ -3,3 +3,10 @@
 01_Segmentation/output/*
 .DS_Store
 *.onnx
+00_Preprocessing/output/
+00_Preprocessing/*.tif
+01_Segmentation/*.tif
+02_DEM/output/
+**/__pycache__/
+**/.DS_Store
+**/logs/
