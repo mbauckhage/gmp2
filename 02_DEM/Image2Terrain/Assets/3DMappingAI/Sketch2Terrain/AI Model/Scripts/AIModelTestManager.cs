@@ -50,6 +50,9 @@ namespace MappingAI
         protected Prediction prediction;
         //[SerializeField]
         protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles\\tile_8_11.png"; // Path to the TXT file
+        string directoryPath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles"; // Change this to your directory path
+        protected string outputDirectoryPath = "Assets/3DMappingAI/HeightMaps/";
+
         protected float[] predicted_result;
         protected float[] input_public;
         protected Texture2D inputDataTexture;
@@ -75,7 +78,6 @@ namespace MappingAI
         void Start()
         {
             _runtimeModel = ModelLoader.Load(modelAsset);
-            // Check if GPU is available and create the appropriate worker
             _engine = SystemInfo.supportsComputeShaders
                 ? WorkerFactory.CreateWorker(WorkerFactory.Type.Compute, _runtimeModel)
                 : WorkerFactory.CreateWorker(WorkerFactory.Type.Auto, _runtimeModel);
@@ -84,10 +86,11 @@ namespace MappingAI
             AIGeneratedModelContainerMeshRenderer = AIGeneratedModelContainer.GetComponent<MeshRenderer>();
             heightmapGradient = ColorManager.InitializeGradient(gradientTheme);
 
-            //aIModelTestManager = new AIModelTestManager();
-
-            WarmupExecuteInferenceAsync();
+            // Run inference for all PNG files in the directory
+            
+            ExecuteInferenceForAllFilesInDirectory(directoryPath);
         }
+
 
         private void Update()
         {
@@ -133,13 +136,13 @@ namespace MappingAI
             await Task.WhenAll(AsyncExecuteInferenceTaskFromPNG());
             //await Task.WhenAll(AsyncVisualizeMeshFromPNG(AIGeneratedModelContainer, StrokeModelContainer, "Assets/3DMappingAI/AI Model/output_height_raster", "Assets/3DMappingAI/AI Model/output_height_raster.tiff"));
         }
-        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(float[] inputData, float[] predicted_result, string inputFilePath)
+        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(float[] inputData, float[] predicted_result, string inputFilePath, string outputDirectoryPath)
         {
             (var heightMapTexture, var heightmapGradientTexture, var inputDataTexture) = ColorManager.Create1DHeightMapTexture(predicted_result, inputChunkSize, heightmapGradient, inputData);
             (var rescaled_predicted_heightmap, Mesh mesh) = HeightMapProcessor.ScaleHeightMap_GenerateMesh(inputData, predicted_result, inputChunkSize, scaleRatio);
 
             // Export the predicted heightmap as a TIFF using the input file's name
-            ExportHeightMap(rescaled_predicted_heightmap, inputFilePath);
+            ExportHeightMap(rescaled_predicted_heightmap, inputFilePath, outputDirectoryPath);
 
             return (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh);
         }
@@ -147,6 +150,7 @@ namespace MappingAI
         private async Task AsyncExecuteInferenceTaskFromPNG()
         {
             string path = inputFilePath;
+            string outputPath = outputDirectoryPath;
             //input_public = ConvertPNGToGrayscaleArray1D(path);
             input_public = AIModelTestManager.LoadPNGTo1DArray(path);
 
@@ -164,7 +168,7 @@ namespace MappingAI
             // Todo: export predict_result for further processing
 
             Mesh mesh;
-            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(input_public, predicted_result, path);
+            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(input_public, predicted_result, path, outputPath);
             //(heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(predicted_result);
             await Task.Yield();
 
@@ -180,6 +184,7 @@ namespace MappingAI
 
             
         }
+
         // placing the mesh in the center of the terrain
         protected async Task AsyncGenerateTerrainTask(float[,] heightMap, GameObject gameObject)
         {
@@ -200,7 +205,7 @@ namespace MappingAI
             gameObject.transform.localPosition = new Vector3(0 - 0.5f * offset, 0, 0 - 0.5f * offset); //offset the model into center
 
             // save the mesh as an asset
-            SaveMeshAsset(mesh, "DEM_Mesh.asset");
+            //SaveMeshAsset(mesh, "DEM_Mesh.asset");
         }
 
 
@@ -382,7 +387,7 @@ namespace MappingAI
             return data1D;
         }
 
-        private void ExportHeightMap(float[,] heightMap, string inputFilePath)
+        private void ExportHeightMap(float[,] heightMap, string inputFilePath, string outputDirectoryPath)
         {
             // Extract the filename without extension
             string fileName = Path.GetFileNameWithoutExtension(inputFilePath);
@@ -390,13 +395,12 @@ namespace MappingAI
             // Define the output file name (prepended with 'height_map_')
             string outputFileName = $"height_map_{fileName}.tif";
 
-            // Define the output directory (you can modify this path if necessary)
-            string directoryPath = "Assets/3DMappingAI/HeightMaps/";
+            
 
             // Ensure the directory exists
-            if (!Directory.Exists(directoryPath))
+            if (!Directory.Exists(outputDirectoryPath))
             {
-                Directory.CreateDirectory(directoryPath);
+                Directory.CreateDirectory(outputDirectoryPath);
             }
 
             // Combine directory and filename to get the full path
@@ -430,6 +434,32 @@ namespace MappingAI
             UnityEngine.Debug.Log($"Height map exported as TIFF to {outputFilePath}");
         }
 
+        public async void ExecuteInferenceForAllFilesInDirectory(string directoryPath)
+        {
+            if (!Directory.Exists(directoryPath))
+            {
+                UnityEngine.Debug.LogError($"Directory does not exist: {directoryPath}");
+                return;
+            }
+
+            // Get all PNG files in the directory
+            var pngFiles = Directory.GetFiles(directoryPath, "*.png");
+
+            if (pngFiles.Length == 0)
+            {
+                UnityEngine.Debug.LogError("No PNG files found in the directory.");
+                return;
+            }
+
+            // Process each PNG file one by one
+            foreach (var pngFile in pngFiles)
+            {
+                inputFilePath = pngFile; // Update the input file path to the current file
+                await AsyncExecuteInferenceTaskFromPNG(); // Run the inference task for the current file
+            }
+
+            UnityEngine.Debug.Log("Finished processing all PNG files.");
+        }
 
     }
 
