@@ -8,8 +8,8 @@ using OpenCvSharp;
 using Unity.Mathematics;
 using System.Runtime.InteropServices;
 using UnityEditor;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MappingAI
 {
@@ -397,6 +397,8 @@ namespace MappingAI
             // Define the output file name (prepended with 'height_map_')
             string outputFileName = $"height_map_{fileName}.tif";
 
+            
+
             // Ensure the directory exists
             if (!Directory.Exists(outputDirectoryPath))
             {
@@ -451,55 +453,101 @@ namespace MappingAI
                 return;
             }
 
+            // List to store all input data (from input PNG files)
+            List<float[]> inputHeightMaps = new List<float[]>();
+
+            // First pass: Load input PNG files and calculate global min and max
+            float globalMin = float.MaxValue;
+            float globalMax = float.MinValue;
+
+            foreach (var pngFile in pngFiles)
+            {
+                // Load the input PNG data (assuming LoadInputDataFromPNG is a function that loads your data)
+                float[] inputHeightMap = LoadInputDataFromPNG(pngFile);
+
+                // Store the input height map for later use
+                inputHeightMaps.Add(inputHeightMap);
+
+                // Calculate min and max for the current input height map
+                float tileMin = inputHeightMap.Min();
+                float tileMax = inputHeightMap.Max();
+
+                // Update global min and max
+                globalMin = Mathf.Min(globalMin, tileMin);
+                globalMax = Mathf.Max(globalMax, tileMax);
+
+                UnityEngine.Debug.Log($"Tile Min: {tileMin}, Tile Max: {tileMax}");
+            }
+
+            UnityEngine.Debug.Log($"Global Min from input tiles: {globalMin}, Global Max from input tiles: {globalMax}");
+
+
             // List to store all predicted height maps
             List<float[]> predictedHeightMaps = new List<float[]>();
 
-            // First pass: Run inference and store the predicted height maps
-            foreach (var pngFile in pngFiles)
+
+            // Second pass: Run inference, normalize based on global min/max from inputs, and export results
+            for (int index = 0; index < pngFiles.Length; index++)
             {
+                string pngFile = pngFiles[index];
                 inputFilePath = pngFile; // Set the current tile
 
                 // Run inference on the current tile
                 await AsyncExecuteInferenceTaskFromPNG();
 
-                // Store the predicted height map in the list
-                predictedHeightMaps.Add(prediction.predicted);
-            }
+                // Store the predicted height map
+                float[] predictedHeightMap = prediction.predicted;
 
-            // Now that we have all the predictions, calculate global min and max
-            float globalMin = float.MaxValue;
-            float globalMax = float.MinValue;
-
-            // Calculate global min and max from the list of predicted height maps
-            foreach (var predictedHeightMap in predictedHeightMaps)
-            {
-                float tileMin = predictedHeightMap.Min();
-                float tileMax = predictedHeightMap.Max();
-
-                globalMin = Mathf.Min(globalMin, tileMin);
-                globalMax = Mathf.Max(globalMax, tileMax);
-            }
-
-            UnityEngine.Debug.Log($"Global Min: {globalMin}, Global Max: {globalMax}");
-
-            // Second pass: Normalize each predicted height map and export
-            for (int index = 0; index < predictedHeightMaps.Count; index++)
-            {
-                // Normalize the predicted height map based on the global min and max
-                float[] normalizedHeightMap = predictedHeightMaps[index];
-                for (int i = 0; i < normalizedHeightMap.Length; i++)
+                // Normalize the predicted height map using the global min and max from the input tiles
+                for (int i = 0; i < predictedHeightMap.Length; i++)
                 {
-                    normalizedHeightMap[i] = (normalizedHeightMap[i] - globalMin) / (globalMax - globalMin);
+                    predictedHeightMap[i] = (predictedHeightMap[i] - globalMin) / (globalMax - globalMin);
                 }
 
-                // Convert the normalized height map to a 2D array (assuming you know the width and height)
-                string pngFile = pngFiles[index];
+                // Store normalized predicted height map
+                predictedHeightMaps.Add(predictedHeightMap);
+
+                // Export the normalized height map (post-process and save)
                 Mesh mesh;
                 (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) =
-                    PostProcess(input_public, normalizedHeightMap, pngFile, outputDirectoryPath);
+                    PostProcess(input_public, predictedHeightMap, pngFile, outputDirectoryPath);
             }
 
-            UnityEngine.Debug.Log("Finished processing and exporting all PNG files.");
+            UnityEngine.Debug.Log("Finished processing all PNG files.");
+        }
+
+        private float[] LoadInputDataFromPNG(string pngFilePath)
+        {
+            // Load the PNG file as a Texture2D
+            byte[] pngData = File.ReadAllBytes(pngFilePath);
+            Texture2D texture = new Texture2D(2, 2);
+            texture.LoadImage(pngData);
+
+            int width = texture.width;
+            int height = texture.height;
+
+            // Create an array to store height values (1D array for easier processing)
+            float[] heightMapData = new float[width * height];
+
+            // Iterate over each pixel and get the grayscale value as height
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // Get the pixel color at (x, y)
+                    Color pixelColor = texture.GetPixel(x, y);
+
+                    // Assuming the height is represented by the grayscale value (R, G, and B are equal)
+                    // Use pixelColor.grayscale to get the grayscale value, which is a float between 0 and 1.
+                    float heightValue = pixelColor.grayscale;
+
+                    // Store the height value in the array
+                    heightMapData[y * width + x] = heightValue;
+                }
+            }
+
+            // Return the height map as a 1D float array
+            return heightMapData;
         }
 
 
