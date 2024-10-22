@@ -8,6 +8,8 @@ using OpenCvSharp;
 using Unity.Mathematics;
 using System.Runtime.InteropServices;
 using UnityEditor;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace MappingAI
 {
@@ -395,8 +397,6 @@ namespace MappingAI
             // Define the output file name (prepended with 'height_map_')
             string outputFileName = $"height_map_{fileName}.tif";
 
-            
-
             // Ensure the directory exists
             if (!Directory.Exists(outputDirectoryPath))
             {
@@ -451,15 +451,57 @@ namespace MappingAI
                 return;
             }
 
-            // Process each PNG file one by one
+            // List to store all predicted height maps
+            List<float[]> predictedHeightMaps = new List<float[]>();
+
+            // First pass: Run inference and store the predicted height maps
             foreach (var pngFile in pngFiles)
             {
-                inputFilePath = pngFile; // Update the input file path to the current file
-                await AsyncExecuteInferenceTaskFromPNG(); // Run the inference task for the current file
+                inputFilePath = pngFile; // Set the current tile
+
+                // Run inference on the current tile
+                await AsyncExecuteInferenceTaskFromPNG();
+
+                // Store the predicted height map in the list
+                predictedHeightMaps.Add(prediction.predicted);
             }
 
-            UnityEngine.Debug.Log("Finished processing all PNG files.");
+            // Now that we have all the predictions, calculate global min and max
+            float globalMin = float.MaxValue;
+            float globalMax = float.MinValue;
+
+            // Calculate global min and max from the list of predicted height maps
+            foreach (var predictedHeightMap in predictedHeightMaps)
+            {
+                float tileMin = predictedHeightMap.Min();
+                float tileMax = predictedHeightMap.Max();
+
+                globalMin = Mathf.Min(globalMin, tileMin);
+                globalMax = Mathf.Max(globalMax, tileMax);
+            }
+
+            UnityEngine.Debug.Log($"Global Min: {globalMin}, Global Max: {globalMax}");
+
+            // Second pass: Normalize each predicted height map and export
+            for (int index = 0; index < predictedHeightMaps.Count; index++)
+            {
+                // Normalize the predicted height map based on the global min and max
+                float[] normalizedHeightMap = predictedHeightMaps[index];
+                for (int i = 0; i < normalizedHeightMap.Length; i++)
+                {
+                    normalizedHeightMap[i] = (normalizedHeightMap[i] - globalMin) / (globalMax - globalMin);
+                }
+
+                // Convert the normalized height map to a 2D array (assuming you know the width and height)
+                string pngFile = pngFiles[index];
+                Mesh mesh;
+                (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) =
+                    PostProcess(input_public, normalizedHeightMap, pngFile, outputDirectoryPath);
+            }
+
+            UnityEngine.Debug.Log("Finished processing and exporting all PNG files.");
         }
+
 
     }
 
