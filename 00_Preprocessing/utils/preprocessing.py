@@ -8,19 +8,15 @@ from rasterio.transform import from_bounds
 from shapely.geometry import mapping
 import os
 import logging
+from rasterio.windows import from_bounds
+
 
 # Use relative import for general_functions
 from .general_functions import ensure_directory_exists
 
 
 
-import geopandas as gpd
-import rasterio
-import numpy as np
-from rasterio.features import rasterize
-from shapely.geometry import mapping
-from scipy.ndimage import distance_transform_edt
-import logging
+
 
 def polygons_to_depth_raster(river_shapefile, output_raster, resolution, max_depth=2.0, input_crs='EPSG:21781',overwrite=False):
     """
@@ -169,12 +165,6 @@ def save_channel_as_binary(input_raster, output_dir,output_filename,output_crs='
             print(f'Saved {channel_name} as binary raster: {output_file}')
 
 
-import geopandas as gpd
-import rasterio
-import numpy as np
-from rasterio.features import rasterize
-from shapely.geometry import mapping
-
 def shape_to_tiff(shapefile_path, tiff_path, resolution=0.5, input_crs='EPSG:2056'):
     """
     Converts a Shapefile to a GeoTIFF raster, where the geometry is rasterized and the heights are taken 
@@ -238,3 +228,106 @@ def shape_to_tiff(shapefile_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         transform=transform,
     ) as dst:
         dst.write(raster, 1)
+
+def stitch_geotiffs(tiff_files, output_path):
+    """
+    Stitches together multiple GeoTIFF files based on their coordinates.
+    Fills non-overlapping areas with zeros.
+    
+    :param tiff_files: List of paths to input GeoTIFF files.
+    :param output_path: Path to save the stitched output GeoTIFF file.
+    """
+    
+    logging.info(f"Stitching {len(tiff_files)} GeoTIFF files")
+
+    # List to store opened raster objects
+    src_files_to_mosaic = []
+
+    # Open each GeoTIFF file
+    for tiff_file in tiff_files:
+        src = rasterio.open(tiff_file)
+        src_files_to_mosaic.append(src)
+    
+    # Use `merge` to stitch rasters together
+    # fill_value=0 will fill the non-overlapping areas with zero
+    mosaic, out_transform = merge(src_files_to_mosaic)
+
+    # Update metadata for the output file
+    out_meta = src_files_to_mosaic[0].meta.copy()
+    out_meta.update({
+        "driver": "GTiff",
+        "height": mosaic.shape[1],
+        "width": mosaic.shape[2],
+        "transform": out_transform,
+        "compress": "lzw"  # Optional: compression to save space
+    })
+    
+    # Write the mosaic to the output file
+    with rasterio.open(output_path, "w", **out_meta) as dest:
+        dest.write(mosaic)
+    
+    # Close all open source files
+    for src in src_files_to_mosaic:
+        src.close()
+        
+    logging.info(f"Stitched GeoTIFF saved to: {output_path}")
+
+
+def clip_geotiff(input_tiff, output_tiff, clip_extent):
+    """
+    Reads a GeoTIFF and clips it to the specified extent.
+    
+    :param input_tiff: Path to the input GeoTIFF file.
+    :param output_tiff: Path to save the clipped GeoTIFF file.
+    :param clip_extent: Tuple of (min_x, min_y, max_x, max_y) representing the clipping bounds.
+    """
+
+    # Open the input GeoTIFF
+    with rasterio.open(input_tiff) as src:
+        # Get the bounding box (clip extent)
+        min_x, min_y, max_x, max_y = clip_extent
+        
+        # Create a window based on the given bounds
+        window = from_bounds(min_x, min_y, max_x, max_y, src.transform)
+        
+        # Convert the window to integer indices
+        row_off = int(window.row_off)
+        col_off = int(window.col_off)
+        height = int(window.height)
+        width = int(window.width)
+        
+        # Read the windowed data
+        clipped_data = src.read(window=window)
+
+        # Update the transform for the clipped window
+        clipped_transform = src.window_transform(window)
+        
+        # Update metadata for the output file
+        out_meta = src.meta.copy()
+        out_meta.update({
+            "driver": "GTiff",
+            "height": height,
+            "width": width,
+            "transform": clipped_transform
+        })
+        
+        # Write the clipped data to the output file
+        with rasterio.open(output_tiff, "w", **out_meta) as dest:
+            dest.write(clipped_data)
+
+
+def get_extent_from_tiff(tiff_file):
+    """
+    Get the extent of a GeoTIFF file in the form of (min_x, min_y, max_x, max_y).
+    
+    :param tiff_file: Path to the input GeoTIFF file.
+    :return: Tuple of (min_x, min_y, max_x, max_y) representing the extent.
+    """
+    
+    with rasterio.open(tiff_file) as src:
+        bounds = src.bounds
+        xmin, ymin, xmax, ymax = bounds.left, bounds.bottom, bounds.right, bounds.top
+
+    clip_extent = (xmin, ymin, xmax, ymax)
+    
+    return clip_extent

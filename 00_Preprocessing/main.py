@@ -1,27 +1,44 @@
 from utils.general_functions import ensure_directory_exists, clean_logs
-from utils.preprocessing import polygons_to_depth_raster, get_bounding_box_from_shp,save_channel_as_binary
+from utils.preprocessing import polygons_to_depth_raster, get_bounding_box_from_shp,save_channel_as_binary, stitch_geotiffs
 import os
 import logging
 from datetime import datetime
+from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 
 
 
 
 # Split channels of tiff file into binary rasters
 # -----------------------------------------------
-split_channels = False
-input_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/old_national/annotations/hydrology/_old/LKg_1165/"
+split_channels = True
+input_directory = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/old_national/annotations/hydrology/LKg_1165/"
 input_split_files = ["LKg_1165_1959_EN_predictions.tif", "LKg_1165_1975_predictions.tif","LKg_1165_1987_predictions.tif"]
-output_split_dir = '/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/old_national/annotations/hydrology/'
+output_split_dir = '/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/'
 
 
 # Create the river depth raster
 # -----------------------------------------------
-create_river_depth_raster = True
+create_river_depth_raster = False
 resolution = 0.5  # 0.5 meters per pixel
 max_depth = 2.0  # Maximum depth of 2 meters
 base_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/old_national/annotations/hydrology/"
 
+
+# Stitch the binary rasters together
+# -----------------------------------------------
+run_stitch_geotiffs = False
+tiff_files = ["/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1165/LKg_1165_1975/LKg_1165_1975_river.tif",
+              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1166/LKg_1166_1975/LKg_1166_1975_LKg_1166_1975_river.tif", 
+              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1185/LKg_1185_1975/LKg_1185_1975_river.tif", 
+              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1186/LKg_1186_1975/LKg_1186_1975_river.tif"]  # Add your file paths here
+output_path = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/stitched_output_rivers.tif"
+
+# Clip the raster
+# -----------------------------------------------
+run_clip_geotiff = False
+input_for_clipping = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/stitched_rivers_1975.tif"
+output_of_clipping = input_for_clipping.replace(".tif","_clipped.tif")
+extent =  "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
 
 
 # Setup logging
@@ -71,5 +88,17 @@ if create_river_depth_raster:
     
                 # Create the river depth raster
                 polygons_to_depth_raster(input, output_raster, resolution, max_depth,overwrite=False)
-                
+
+if run_stitch_geotiffs:
+    stitch_geotiffs(tiff_files, output_path)
+            
+
+if run_clip_geotiff:
+    if isinstance(extent, str):
+        extent = get_extent_from_tiff(extent)
+    
+    assert len(extent) == 4, "Extent must contain 4 values"
+    clip_geotiff(input_for_clipping, output_of_clipping, extent)
+            
+        
 clean_logs(log_directory)
