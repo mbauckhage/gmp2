@@ -5,6 +5,7 @@ from shapely.geometry import mapping
 import numpy as np
 from PIL import Image
 import os
+import logging
 
 def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
     # Read the GeoJSON as a GeoDataFrame
@@ -164,7 +165,7 @@ def get_min_height_from_geojson(geojson_path, height_attribute='hoehe'):
     return min_height
 
 
-def stitch_tiles(tile_dir, output_image_path, original_width, original_height):
+def stitch_tiles(tile_dir, output_image_path, original_width, original_height,filename_starts_with='tile'):
     """
     Stitch 512x512 tiles together to form the original image and remove padding.
     
@@ -178,20 +179,29 @@ def stitch_tiles(tile_dir, output_image_path, original_width, original_height):
     # Get list of all files in the tile directory
     tile_files = sorted(os.listdir(tile_dir))
     
+    logging.info(f"Found {len(tile_files)} files in the tile directory")
+    
     
     # Initialize a dictionary to store the tiles by their coordinates
     tiles = {}
     
     # Extract tile coordinates from filenames and load the images
     for f in tile_files:
-        if f.startswith('tile') and f.endswith('.png'):
+        if f.startswith(filename_starts_with) and (f.endswith('.png') or f.endswith('.jpg') or f.endswith('.tif') or f.endswith('.tiff')):
+            logging.info(f"Processing tile: {f}")
             # Extract coordinates from filename (assumed format: tile_y_x.png)
             parts = f.split('_')
-            tile_y = int(parts[1])
-            tile_x = int(parts[2].split('.')[0])
+            tile_y = int(parts[-2])
+            tile_x = int(parts[-1].split('.')[0])
             
             # Load the image and store it in the dictionary
             img = Image.open(os.path.join(tile_dir, f))
+            
+            # Transpose the image matrix
+            img = img.transpose(Image.Transpose.ROTATE_270)
+            # Flip the image horizontally
+            img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            
             tiles[(tile_y, tile_x)] = img
     
     # Calculate how many tiles we have along x and y directions
@@ -220,6 +230,7 @@ def stitch_tiles(tile_dir, output_image_path, original_width, original_height):
     final_image.save(output_image_path)
     
     print(f"Stitched image saved to {output_image_path}")
+    logging.info(f"Stitched image saved to {output_image_path}")
 
 
 def adjust_heightmap_with_rivers(heightmap_path, river_mask_path, output_path, reduction_value=2.0, falloff_distance=50):

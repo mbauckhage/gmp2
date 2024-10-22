@@ -1,9 +1,12 @@
 from utils.dem import *
 import os
+import logging
+from datetime import datetime
+from utils.general_functions import ensure_directory_exists
 
 
 input_geojson_path = "data/test_lines.geojson"
-output_tiff_path = "output/output_height_raster.tiff"
+output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_from_tiles.png"
 output_png_path = "output/"
 
 
@@ -17,13 +20,31 @@ output_png_path = "output/"
 import os
 import rasterio
 
-tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/raw_tiles"
-output_image_path = "output/height_map_from_tiles.png"
+tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_maps/"
+output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles.png"
+
+filename_starts_with= 'height_map_tile'
+
 
 # Get list of all files in the tile directory
 tile_files = os.listdir(tile_dir)
 
 
+
+# Setup logging
+# -----------------------------------------------
+log_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/logs/dem/"
+ensure_directory_exists(log_directory)
+log_file = os.path.join(log_directory, f"preprocessing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
     
 """tile_coords = [tuple(map(int, f.split('.')[0].split('_')[1:])) for f in tile_files if f.startswith('tile')]
 
@@ -39,4 +60,5 @@ with rasterio.open(output_tiff_path) as src:
     original_height = src.height
 
 
-stitch_tiles(tile_dir, output_image_path,original_width, original_height)
+stitch_tiles(tile_dir, output_image_path,original_width, original_height, filename_starts_with=filename_starts_with)
+
