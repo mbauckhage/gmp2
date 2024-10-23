@@ -9,6 +9,7 @@ from shapely.geometry import mapping
 import os
 import logging
 from rasterio.windows import from_bounds
+from rasterio.merge import merge
 
 
 # Use relative import for general_functions
@@ -229,7 +230,7 @@ def shape_to_tiff(shapefile_path, tiff_path, resolution=0.5, input_crs='EPSG:205
     ) as dst:
         dst.write(raster, 1)
 
-def stitch_geotiffs(tiff_files, output_path):
+def stitch_geotiffs(tiff_files, output_path, crs='EPSG:21781'):
     """
     Stitches together multiple GeoTIFF files based on their coordinates.
     Fills non-overlapping areas with zeros.
@@ -251,6 +252,9 @@ def stitch_geotiffs(tiff_files, output_path):
     # Use `merge` to stitch rasters together
     # fill_value=0 will fill the non-overlapping areas with zero
     mosaic, out_transform = merge(src_files_to_mosaic)
+    
+    logging.info(f"Read CRS: {src_files_to_mosaic[0].crs}")
+    logging.info(f"Set CRS to: {crs}")
 
     # Update metadata for the output file
     out_meta = src_files_to_mosaic[0].meta.copy()
@@ -259,7 +263,8 @@ def stitch_geotiffs(tiff_files, output_path):
         "height": mosaic.shape[1],
         "width": mosaic.shape[2],
         "transform": out_transform,
-        "compress": "lzw"  # Optional: compression to save space
+        "compress": "lzw",  # Optional: compression to save space
+        "crs": crs
     })
     
     # Write the mosaic to the output file

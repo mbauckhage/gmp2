@@ -10,7 +10,7 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 
 # Split channels of tiff file into binary rasters
 # -----------------------------------------------
-split_channels = True
+split_channels = False
 input_directory = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/old_national/annotations/hydrology/LKg_1165/"
 input_split_files = ["LKg_1165_1959_EN_predictions.tif", "LKg_1165_1975_predictions.tif","LKg_1165_1987_predictions.tif"]
 output_split_dir = '/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/'
@@ -26,17 +26,17 @@ base_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2
 
 # Stitch the binary rasters together
 # -----------------------------------------------
-run_stitch_geotiffs = False
-tiff_files = ["/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1165/LKg_1165_1975/LKg_1165_1975_river.tif",
-              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1166/LKg_1166_1975/LKg_1166_1975_LKg_1166_1975_river.tif", 
-              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1185/LKg_1185_1975/LKg_1185_1975_river.tif", 
-              "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/LKg_1186/LKg_1186_1975/LKg_1186_1975_river.tif"]  # Add your file paths here
-output_path = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/stitched_output_rivers.tif"
+run_stitch_geotiffs = True
+tiff_files = ["00_Data/old_national/map_sheets/LKg_1165/LKg_1165_1975.tif",
+              "00_Data/old_national/map_sheets/LKg_1166/LKg_1166_1975.tif",
+              "00_Data/old_national/map_sheets/LKg_1185/LKg_1185_1975.tif",
+              "00_Data/old_national/map_sheets/LKg_1186/LKg_1186_1975.tif"]  # Add your file paths here
+output_path = "00_Data/old_national/map_sheets/old_national_1975_stitched.tif"
 
 # Clip the raster
 # -----------------------------------------------
-run_clip_geotiff = False
-input_for_clipping = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/00_Data/processed_data/annotations/hydrology/stitched_rivers_1975.tif"
+run_clip_geotiff = True
+input_for_clipping = "00_Data/old_national/map_sheets/old_national_1975_stitched.tif"
 output_of_clipping = input_for_clipping.replace(".tif","_clipped.tif")
 extent =  "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
 
