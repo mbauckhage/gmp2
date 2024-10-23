@@ -11,3 +11,5 @@
 02_DEM/utils/__pycache__/
 **/.DS_Store
 **/logs/
+00_Backups/
+**/output/
