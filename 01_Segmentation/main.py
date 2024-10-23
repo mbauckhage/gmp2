@@ -7,12 +7,12 @@ from tkinter import messagebox
 
 # Input paths:
 # ---------------------------------------------
-image_file_path = 'data/Siegfried.tif'
+image_file_path = "00_Data/old_national/map_sheets/old_national_1975_stitched_clipped.tif"
 
 # Output paths:
 # ---------------------------------------------
-skeleton_img_path = "output/full_test/skeleton.png"
-output_path_geojson = "output/full_test/skeleton.geojson"
+skeleton_img_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton_raw.png"
+output_path_geojson = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton_raw.geojson"
 
 # Parameters:
 # ---------------------------------------------

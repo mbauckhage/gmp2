@@ -8,7 +8,7 @@ import json
 from shapely.geometry import LineString
 import geopandas as gpd
 from skimage.morphology import skeletonize
-from trace_skeleton import *
+from .trace_skeleton import *
 from pyproj import Transformer
 from rasterio.crs import CRS
 import random
@@ -104,7 +104,7 @@ def plot_skeleton_trace(skeleton_img_path,iterations=999):
 
     plt.imshow(im0)
     
-def skeleton_trace(skeleton_img_path,original_img_path,output_path_geojson,iterations=999,overwrite=False):
+def skeleton_trace(skeleton_img_path,original_img_path,output_path_geojson,iterations=999,overwrite=False,crs='EPSG:21781'):
     
     print("--- skeleton_trace ---")
     
@@ -118,7 +118,8 @@ def skeleton_trace(skeleton_img_path,original_img_path,output_path_geojson,itera
     # Read the pixel size (resolution) from the TIFF file using rasterio
     with rasterio.open(original_img_path) as src:
         transform = src.transform
-        crs = src.crs  # Get the coordinate reference system (CRS)
+        if crs is None:
+            crs = src.crs  # Get the coordinate reference system (CRS)
         pixel_width = transform[0]  # Size of a pixel in the x direction (in meters)
         pixel_height = abs(transform[4])  # Size of a pixel in the y direction (in meters)
 
