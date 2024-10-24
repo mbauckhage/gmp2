@@ -7,6 +7,7 @@ from utils.general_functions import ensure_directory_exists
 
 input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton.geojson"
 output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
+output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/stitched_rivers_1975_clipped.tif"
 output_png_path = "output/"
 
 
@@ -21,7 +22,8 @@ import os
 import rasterio
 
 tile_dir = "D:\\mbauckhage\\gmp2\\00_Transfer\\tiles_height_map_old_national_1975_processed_241024"
-output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles.png"
+tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/tiles_height_map_old_national_1975_processed_241024"
+output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles_1975.png"
 
 filename_starts_with= 'height_map_tile'
 
