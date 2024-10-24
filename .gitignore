@@ -13,3 +13,4 @@
 **/logs/
 00_Backups/
 **/output/
+*.log

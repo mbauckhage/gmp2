@@ -2,15 +2,17 @@ using System.IO;
 using UnityEngine;
 using OpenCvSharp;
 using System.Runtime.InteropServices;
+using UnityEditor;
 
 namespace MappingAI
 {
     public class StitchedHeightMapLoader : MonoBehaviour
     {
-        [SerializeField] private string stitchedHeightMapPath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\height_map_from_tiles.png"; // Path to the stitched PNG file
+        [SerializeField] private string stitchedHeightMapPath = "Assets/3DMappingAI/Sketch2Terrain/AI Model/Test/dhm25.png"; // Path to the stitched PNG file
         [SerializeField] private GameObject StitchedMeshContainer; // GameObject to hold the mesh
         [SerializeField] private float heightMultiplier = 10f; // Multiplier for the height map
         [SerializeField] private Material meshMaterial; // Material for the mesh
+        [SerializeField] private string savePath = "Assets/GeneratedMeshes/"; // Path to save the generated mesh as an asset
 
         private MeshRenderer StitchedMeshRenderer;
         private int stitchedWidth;
@@ -67,6 +69,10 @@ namespace MappingAI
             // Place the mesh in the center
             float offset = Mathf.Max(stitchedWidth, stitchedHeight) * 0.5f;
             StitchedMeshContainer.transform.localPosition = new Vector3(-offset, 0, -offset);
+
+            // Save the generated mesh as an asset
+            SaveMeshAsAsset(mesh, "StitchedHeightMapMesh");
+
         }
 
         public static float[,] LoadPNGTo2DArray(string path, out int width, out int height)
@@ -78,11 +84,32 @@ namespace MappingAI
                 return null;
             }
 
-            // Load the PNG using OpenCV
-            Mat image = Cv2.ImRead(path, ImreadModes.Grayscale);
-            if (image == null || image.Empty())
+            // Check the file extension
+            string extension = Path.GetExtension(path).ToLower();
+            Mat image;
+
+            // Load the image using OpenCV
+            if (extension == ".tif" || extension == ".tiff")
             {
-                Debug.LogError($"Failed to load image at path: {path}");
+                // Load TIFF file
+                // Try loading as a 16-bit grayscale image if 8-bit fails
+                image = Cv2.ImRead(path, ImreadModes.AnyDepth | ImreadModes.Grayscale);
+
+                if (image.Empty())
+                {
+                    Debug.LogError($"Failed to load TIFF file: {path}");
+                    width = height = 0;
+                    return null;
+                }
+            }
+            else if (extension == ".png")
+            {
+                // Load PNG file (as before)
+                image = Cv2.ImRead(path, ImreadModes.Grayscale);
+            }
+            else
+            {
+                Debug.LogError("Unsupported file format. Please use a .png or .tif file.");
                 width = height = 0;
                 return null;
             }
@@ -124,6 +151,22 @@ namespace MappingAI
             }
 
             return floatArray;
+        }
+
+        // Method to save the mesh as an asset
+        private void SaveMeshAsAsset(Mesh mesh, string meshName)
+        {
+            if (!Directory.Exists(savePath))
+            {
+                Directory.CreateDirectory(savePath);
+            }
+
+            string meshAssetPath = $"{savePath}{meshName}.asset";
+            AssetDatabase.CreateAsset(mesh, meshAssetPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            Debug.Log($"Mesh saved as an asset at: {meshAssetPath}");
         }
     }
 }
