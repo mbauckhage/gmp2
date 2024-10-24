@@ -20,7 +20,7 @@ output_png_path = "output/"
 import os
 import rasterio
 
-tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_maps/"
+tile_dir = "D:\\mbauckhage\\gmp2\\00_Transfer\\tiles_height_map_old_national_1975_processed_241024"
 output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles.png"
 
 filename_starts_with= 'height_map_tile'
