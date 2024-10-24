@@ -50,7 +50,7 @@ namespace MappingAI
         protected Prediction prediction;
         //[SerializeField]
         protected string inputFilePath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles\\tile_8_11.png"; // Path to the TXT file
-        string directoryPath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles"; // Change this to your directory path
+        string directoryPath = "Assets\\3DMappingAI\\Sketch2Terrain\\AI Model\\Test\\tiles_height_map_old_national_1975_20241023_104640"; // Change this to your directory path
         protected string outputDirectoryPath = "Assets/3DMappingAI/HeightMaps/";
 
         protected float[] predicted_result;
@@ -136,20 +136,10 @@ namespace MappingAI
             await Task.WhenAll(AsyncExecuteInferenceTaskFromPNG());
             //await Task.WhenAll(AsyncVisualizeMeshFromPNG(AIGeneratedModelContainer, StrokeModelContainer, "Assets/3DMappingAI/AI Model/output_height_raster", "Assets/3DMappingAI/AI Model/output_height_raster.tiff"));
         }
-
-
-        
-        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(
-            float[] inputData, float[] predicted_result, string inputFilePath, string outputDirectoryPath, float inputMin, float inputMax)
+        protected (Texture2D, Texture2D, Texture2D, float[,], Mesh) PostProcess(float[] inputData, float[] predicted_result, string inputFilePath, string outputDirectoryPath)
         {
-            // Normalize the predicted result based on the input min/max values
-            float[] normalizedPredictedResult = NormalizePredictionToInputMinMax(predicted_result, inputMin, inputMax);
-
-            (var heightMapTexture, var heightmapGradientTexture, var inputDataTexture) = 
-                ColorManager.Create1DHeightMapTexture(normalizedPredictedResult, inputChunkSize, heightmapGradient, inputData);
-
-            (var rescaled_predicted_heightmap, Mesh mesh) = 
-                HeightMapProcessor.ScaleHeightMap_GenerateMesh(inputData, normalizedPredictedResult, inputChunkSize, scaleRatio);
+            (var heightMapTexture, var heightmapGradientTexture, var inputDataTexture) = ColorManager.Create1DHeightMapTexture(predicted_result, inputChunkSize, heightmapGradient, inputData);
+            (var rescaled_predicted_heightmap, Mesh mesh) = HeightMapProcessor.ScaleHeightMap_GenerateMesh(inputData, predicted_result, inputChunkSize, scaleRatio);
 
             // Export the predicted heightmap as a TIFF using the input file's name
             ExportHeightMap(rescaled_predicted_heightmap, inputFilePath, outputDirectoryPath);
@@ -157,51 +147,16 @@ namespace MappingAI
             return (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh);
         }
 
-        // Add a new function to normalize predicted results to the input min/max range
-        private float[] NormalizePredictionToInputMinMax(float[] predicted, float inputMin, float inputMax)
-        {
-            float predictedMin = float.MaxValue;
-            float predictedMax = float.MinValue;
-
-            // Find the min and max values in the predicted results
-            for (int i = 0; i < predicted.Length; i++)
-            {
-                if (predicted[i] < predictedMin) predictedMin = predicted[i];
-                if (predicted[i] > predictedMax) predictedMax = predicted[i];
-            }
-
-            // Normalize predicted results to the range of the input's min/max
-            float[] normalized = new float[predicted.Length];
-            for (int i = 0; i < predicted.Length; i++)
-            {
-                // Scale and shift the predicted values to match the input min/max range
-                normalized[i] = (predicted[i] - predictedMin) / (predictedMax - predictedMin) * (inputMax - inputMin) + inputMin;
-            }
-
-            return normalized;
-        }
-
-
-        public async Task AsyncExecuteInferenceTaskFromPNG()
+        private async Task AsyncExecuteInferenceTaskFromPNG()
         {
             string path = inputFilePath;
             string outputPath = outputDirectoryPath;
+            //input_public = ConvertPNGToGrayscaleArray1D(path);
+            input_public = AIModelTestManager.LoadPNGTo1DArray(path);
 
-            // Declare the tuple first
-            (float[] heightMapData, float inputMin, float inputMax) result;
-
-            // Assign the result by calling the function
-            result = LoadInputDataFromPNG(path);
-
-            // Access the values using result
-            float[] heightMapData = result.heightMapData;
-            float inputMin = result.inputMin;
-            float inputMax = result.inputMax;
-
-
+            // Example input data (should be populated with actual data)
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            input_public = LoadPNGTo1DArray(path);
             await RunInference(input_public);
 
             stopwatch.Stop();
@@ -209,23 +164,30 @@ namespace MappingAI
             UnityEngine.Debug.Log($"Execution Time RunInference: {elapsed.TotalMilliseconds} ms");
             predicted_result = prediction.predicted;
 
-            // Post-process: Normalize predicted results using input min/max
-            Mesh mesh;
-            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) =
-                PostProcess(input_public, predicted_result, path, outputPath, inputMin, inputMax);
 
+            
+
+            Mesh mesh;
+
+            // heightmap is exportet in "PosProcess"
+            (heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(input_public, predicted_result, path, outputPath);
+            //(heightMapTexture, heightmapGradientTexture, inputDataTexture, rescaled_predicted_heightmap, mesh) = PostProcess(predicted_result);
             await Task.Yield();
 
+            /**
             // Set the material to the mesh
             Material m = ReliefShadingMaterial;
             m.SetTexture("_MainTex", heightmapGradientTexture);
             m.SetTexture("_HeightMap", heightMapTexture);
             m.SetFloat("_HeightMultiplier", 10f); // Set your height multiplier
             AIGeneratedModelContainerMeshRenderer.material = m;
-
             await Task.WhenAll(AsyncGenerateTerrainTask(rescaled_predicted_heightmap, AIGeneratedModelContainer));
-        }
+            //await Task.WhenAll(AsyncGenerateTerrainTask(mesh, AIGeneratedModelContainer, rescaled_predicted_heightmap.GetLength(0), rescaled_predicted_heightmap.GetLength(1)));
+            //await Task.WhenAll(AsyncGenerateTerrainTask(ReshapeArray(input_public), StrokeModelContainer));
 
+            **/
+            
+        }
 
         // placing the mesh in the center of the terrain
         protected async Task AsyncGenerateTerrainTask(float[,] heightMap, GameObject gameObject)
@@ -351,40 +313,6 @@ namespace MappingAI
 
             return floatArray;
         }
-
-        private (float[], float, float) LoadInputDataFromPNG(string pngFilePath)
-        {
-            // Load the input data (this remains the same as the previous version)
-            byte[] pngData = File.ReadAllBytes(pngFilePath);
-            Texture2D texture = new Texture2D(2, 2);
-            texture.LoadImage(pngData);
-
-            int width = texture.width;
-            int height = texture.height;
-
-            float[] heightMapData = new float[width * height];
-            float inputMin = float.MaxValue;
-            float inputMax = float.MinValue;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    Color pixelColor = texture.GetPixel(x, y);
-                    float heightValue = pixelColor.grayscale;
-
-                    heightMapData[y * width + x] = heightValue;
-
-                    // Track the min and max values
-                    if (heightValue < inputMin) inputMin = heightValue;
-                    if (heightValue > inputMax) inputMax = heightValue;
-                }
-            }
-
-            // Return the height map data along with the min and max values
-            return (heightMapData, inputMin, inputMax);
-        }
-
         public static float[] ConvertPNGToGrayscaleArray1D(string path)
         {
             // Load the PNG file as a Texture2D
@@ -479,30 +407,46 @@ namespace MappingAI
                 Directory.CreateDirectory(outputDirectoryPath);
             }
 
+
             // Combine directory and filename to get the full path
             string outputFilePath = Path.Combine(directoryPath, outputFileName);
 
             int width = heightMap.GetLength(0);
             int height = heightMap.GetLength(1);
 
-            // Create an empty Mat to store the image data
-            Mat image = new Mat(height, width, MatType.CV_32FC1); // 32-bit float single-channel matrix
-
-            // Populate the image with the height map data
+            // Find the maximum value in the heightMap to normalize correctly
+            float maxHeight = float.MinValue;
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
                 {
-                    image.Set(i, j, heightMap[i, j]); // Set the pixel value (normalized height data)
+                    if (heightMap[i, j] > maxHeight)
+                    {
+                        maxHeight = heightMap[i, j];
+                        UnityEngine.Debug.Log($"maxHeight: {maxHeight}");
+
+
+                    }
                 }
             }
 
-            // Normalize the image between 0 and 1 if necessary (for grayscale)
-            Cv2.Normalize(image, image, 0, 1, NormTypes.MinMax);
+            // Create an empty Mat to store the image data
+            Mat image8Bit = new Mat(height, width, MatType.CV_8UC1); // 8-bit single-channel matrix
 
-            // Convert the float image to 8-bit for saving as TIFF
-            Mat image8Bit = new Mat();
-            image.ConvertTo(image8Bit, MatType.CV_8UC1, 255.0);
+            // Populate the image with the height map data, scaling appropriately
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    if (maxHeight <= 0)
+                    {
+                        maxHeight = 1; // Prevent division by zero, set to a small value
+                    }
+
+                    byte pixelValue = (byte)(heightMap[i, j] * maxHeight * 255);
+                    image8Bit.Set(i, j, pixelValue); // Set the pixel value
+                }
+            }
 
             // Save the image as TIFF
             Cv2.ImWrite(outputFilePath, image8Bit);
