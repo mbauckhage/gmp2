@@ -7,6 +7,7 @@ from utils.general_functions import ensure_directory_exists
 
 input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton.geojson"
 output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
+output_tiff_path = "D:\\mbauckhage\\gmp2\\00_Transfer\\stitched_rivers_1975_clipped.tif"
 output_png_path = "output/"
 
 
@@ -22,6 +23,7 @@ import rasterio
 
 tile_dir = "D:\\mbauckhage\\gmp2\\00_Transfer\\tiles_height_map_old_national_1975_processed_241024"
 output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles.png"
+output_image_path = "D:\\mbauckhage\\gmp2\\test.png"
 
 filename_starts_with= 'height_map_tile'
 
@@ -34,6 +36,7 @@ tile_files = os.listdir(tile_dir)
 # Setup logging
 # -----------------------------------------------
 log_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/logs/dem/"
+log_directory = "D:\\mbauckhage\\gmp2"
 ensure_directory_exists(log_directory)
 log_file = os.path.join(log_directory, f"preprocessing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 
