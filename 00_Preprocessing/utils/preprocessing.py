@@ -18,8 +18,138 @@ from .general_functions import ensure_directory_exists
 
 
 
+def polygons_to_raster(river_shapefile, output_raster, resolution, input_crs='EPSG:21781',overwrite=False):
+    
+    """
+    Convert polygons (e.g., rivers, lakes) to a binary raster.
 
-def polygons_to_depth_raster(river_shapefile, output_raster, resolution, max_depth=2.0, input_crs='EPSG:21781',overwrite=False):
+    Parameters:
+    - river_shapefile: Path to the river shapefile (polygon).
+    - output_raster: Path where the output raster will be saved.
+    - resolution: Spatial resolution of the output raster.
+    - input_crs: Coordinate reference system of the input shapefile (default is 'EPSG:21781').
+    - overwrite: Boolean flag to allow overwriting the output raster if it already exists (default is False).
+
+    Output:
+    A binary raster where the polygons are represented with a value of 1 and the background with a value of 0.
+    """
+
+    
+    # Check if the output raster already exists and handle the overwrite flag
+    if os.path.exists(output_raster):
+        if overwrite:
+            logging.info(f"{output_raster} already exists and will be overwritten.")
+        else:
+            logging.info(f"{output_raster} already exists and overwrite is set to False. Exiting.")
+            return
+    
+    
+    logging.info(f"Creating river depth raster from {river_shapefile}")
+    
+    # Load river shapefile as a GeoDataFrame
+    gdf = gpd.read_file(river_shapefile)
+    logging.info(f"Loaded {len(gdf)} polygons from the shapefile")
+
+    if gdf.crs is None:
+        gdf.set_crs(input_crs, inplace=True)
+        logging.info(f"CRS was missing. Set to {input_crs}")
+
+    # Filter out geometries that are None or invalid
+    valid_gdf = gdf[gdf.geometry.notnull() & gdf.is_valid]
+    invalid_count = len(gdf) - len(valid_gdf)
+    if invalid_count > 0:
+        logging.warning(f"Filtered out {invalid_count} invalid geometries")
+    
+    if valid_gdf.empty:
+        raise ValueError("No valid geometries found in the shapefile")
+
+    # Set up the bounds of the raster (based on the geometry bounds)
+    minx, miny, maxx, maxy = valid_gdf.total_bounds
+
+    # Define the output raster dimensions (based on the finer resolution)
+    width = int((maxx - minx) / resolution)
+    height = int((maxy - miny) / resolution)
+
+    logging.info("Transform raster")
+    # Create an affine transform for the raster
+    transform = rasterio.transform.from_bounds(minx, miny, maxx, maxy, width, height)
+
+    # Create an empty array to store the raster data
+    raster = np.zeros((height, width), dtype=rasterio.float32)
+
+    # Prepare geometries and corresponding 'hoehe' values for rasterization
+    shapes = ((mapping(geom), 1) for geom in valid_gdf.geometry)
+
+    logging.info("Rasterize shapes")
+    # Rasterize the polygons using a value of 1
+    raster = rasterize(
+        shapes=shapes,
+        out_shape=raster.shape,
+        transform=transform,
+        fill=0,  # Background value
+        dtype=rasterio.float32
+    )
+
+    
+
+    logging.info("Write raster to file")
+    # Write the depth raster to a GeoTIFF file
+    with rasterio.open(
+        output_raster,
+        'w',
+        driver='GTiff',
+        height=height,
+        width=width,
+        count=1,
+        dtype=rasterio.float32,
+        crs=gdf.crs,
+        transform=transform
+    ) as dst:
+        dst.write(raster, 1)
+
+    print(f"River depth raster saved to {output_raster}")
+    logging.info(f"River depth raster saved to {output_raster}")
+
+
+
+def depth_raster(input_raster, output_raster, max_depth=2):
+    
+
+    # Read the raster from the GeoTIFF file
+    with rasterio.open(input_raster) as src:
+        raster = src.read(1)
+
+    print("Calculate distance to edge")
+    # Calculate Euclidean distance to the nearest edge of the river polygons
+    distance_to_edge = distance_transform_edt(raster)
+    depth_gradient = distance_to_edge / 5
+
+    # Cap the depth gradient at max_depth
+    depth_gradient = np.clip(depth_gradient, 0, max_depth)
+
+
+    # Apply the river mask (depth only inside river polygons)
+    river_depth_raster = np.where(raster == 1, depth_gradient, 0)
+    
+    # Write the depth raster to a GeoTIFF file
+    with rasterio.open(
+        output_raster,
+        'w',
+        driver='GTiff',
+        height=raster.shape[0],
+        width=raster.shape[1],
+        count=1,
+        dtype=rasterio.float32,
+        crs=src.crs,
+        transform=src.transform
+    ) as dst:
+        dst.write(river_depth_raster, 1)
+
+    print(f"River depth raster saved to {output_raster}")
+
+
+
+def polygons_to_depth_raster(river_shapefile, output_raster, resolution, max_depth=2, input_crs='EPSG:21781',overwrite=False):
     """
     Convert polygons (e.g. rivers, lakes) to a raster with depth gradient (deeper in the middle of the rivers).
     
@@ -91,10 +221,11 @@ def polygons_to_depth_raster(river_shapefile, output_raster, resolution, max_dep
     logging.info("Calculate distance to edge")
     # Calculate Euclidean distance to the nearest edge of the river polygons
     distance_to_edge = distance_transform_edt(raster)
-
-    # Normalize the distance to create a gradient from the river edge (0 depth) to the center (max depth)
-    max_distance = distance_to_edge.max()
-    depth_gradient = max_depth * (distance_to_edge / max_distance)
+    depth_gradient = distance_to_edge / 5
+    
+    # Cap the depth gradient at max_depth
+    depth_gradient = np.clip(depth_gradient, 0, max_depth)
+    
 
     # Apply the river mask (depth only inside river polygons)
     river_depth_raster = np.where(raster == 1, depth_gradient, 0)
@@ -319,6 +450,8 @@ def clip_geotiff(input_tiff, output_tiff, clip_extent):
         # Write the clipped data to the output file
         with rasterio.open(output_tiff, "w", **out_meta) as dest:
             dest.write(clipped_data)
+            
+        logging.info(f"Clipped GeoTIFF saved to: {output_tiff}")
 
 
 def get_extent_from_tiff(tiff_file):
