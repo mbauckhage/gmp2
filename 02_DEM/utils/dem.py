@@ -10,21 +10,38 @@ import logging
 def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
     # Read the GeoJSON as a GeoDataFrame
     gdf = gpd.read_file(geojson_path)
+    
+    
 
     # Ensure the GeoDataFrame has a 'hoehe' column
     if height_attribute not in gdf.columns:
         raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
+    
+    # Select only the 'height' attribute and the geometry
+    gdf = gdf[[height_attribute, 'geometry']]
+    
+    # Check validity of each geometry
+    gdf['is_valid'] = gdf['geometry'].is_valid
+    
+    # Show all invalid geometries
+    invalid_geometries = gdf[~gdf['is_valid']]
+    logging.info(f"Number of invalid geometries: {len(invalid_geometries)}")
+    # Remove all features that have 'is_valid' == False
+    gdf = gdf[gdf['is_valid']]
+        
 
-    # Check if CRS is set; if not, assign the input CRS (assuming EPSG:4326 if not provided)
+    """# Check if CRS is set; if not, assign the input CRS (assuming EPSG:4326 if not provided)
     if gdf.crs is None:
         gdf.set_crs(input_crs, inplace=True)
         print(f"CRS was missing. Set to {input_crs}")
 
     # Reproject the GeoDataFrame to EPSG:2056
-    gdf = gdf.to_crs(epsg=2056)
+    gdf = gdf.to_crs(epsg=2056)"""
+
 
     # Set up the bounds of the raster (based on the geometry bounds)
     minx, miny, maxx, maxy = gdf.total_bounds
+    logging.info(f"Bounds: {minx, miny, maxx, maxy}")
 
     # Define the output raster dimensions (based on the finer resolution)
     width = int((maxx - minx) / resolution)
@@ -72,14 +89,27 @@ def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EP
     # Ensure the GeoDataFrame has a 'hoehe' column
     if height_attribute not in gdf.columns:
         raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
-
+    
+     # Select only the 'height' attribute and the geometry
+    gdf = gdf[[height_attribute, 'geometry']]
+    
+    # Check validity of each geometry
+    gdf['is_valid'] = gdf['geometry'].is_valid
+    
+    # Show all invalid geometries
+    invalid_geometries = gdf[~gdf['is_valid']]
+    logging.info(f"Number of invalid geometries: {len(invalid_geometries)}")
+    # Remove all features that have 'is_valid' == False
+    gdf = gdf[gdf['is_valid']]
+    
+    """
     # Check if CRS is set; if not, assign the input CRS (assuming EPSG:4326 if not provided)
     if gdf.crs is None:
         gdf.set_crs(input_crs, inplace=True)
         print(f"CRS was missing. Set to {input_crs}")
 
     # Reproject the GeoDataFrame to EPSG:2056
-    gdf = gdf.to_crs(epsg=2056)
+    gdf = gdf.to_crs(epsg=2056)"""
 
     # Set up the bounds of the raster (based on the geometry bounds)
     minx, miny, maxx, maxy = gdf.total_bounds

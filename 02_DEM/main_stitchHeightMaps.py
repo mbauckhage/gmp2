@@ -5,8 +5,8 @@ from datetime import datetime
 from utils.general_functions import ensure_directory_exists
 
 
-input_geojson_path = "data/test_lines.geojson"
-output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_from_tiles.png"
+input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton.geojson"
+output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
 output_png_path = "output/"
 
 
