@@ -7,12 +7,100 @@ from PIL import Image
 import os
 import logging
 
+
+
+
+import os
+import numpy as np
+import rasterio
+from rasterio.transform import from_origin
+from PIL import Image
+
+def create_tiles(input_raster, output_dir, img_format='png', resolution=1, input_crs='EPSG:2056', 
+                 height_attribute='hoehe', min_nonzero_value=450, tile_size=512):
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Read the raster file
+    with rasterio.open(input_raster) as src:
+        raster = src.read(1)  # Read the first band
+        width = src.width
+        height = src.height
+    
+    # Calculate the maximum value for normalization
+    max_value = raster.max()
+
+    # Normalize the raster to [0, 255]
+    raster_normalized = np.where(
+        raster > 0,  # Only normalize non-zero values
+        (raster - min_nonzero_value) / (max_value - min_nonzero_value) * 255,
+        0  # Set background or zero values to 0
+    )
+    raster_normalized = np.clip(raster_normalized, 0, 255)
+    
+    # Calculate the number of tiles needed in x and y directions
+    num_tiles_x = int(np.ceil(width / tile_size))
+    num_tiles_y = int(np.ceil(height / tile_size))
+
+    # Loop through each tile
+    for tile_x in range(num_tiles_x):
+        for tile_y in range(num_tiles_y):
+            # Calculate the pixel boundaries for the current tile
+            start_x = tile_x * tile_size
+            start_y = tile_y * tile_size
+            end_x = min(start_x + tile_size, width)
+            end_y = min(start_y + tile_size, height)
+            
+            print(f"Processing tile ({tile_y}, {tile_x}): ({start_y}, {end_y}), ({start_x}, {end_x})")
+
+            # Extract the tile from the raster and flip it vertically
+            tile = raster_normalized[start_y:end_y, start_x:end_x]
+            
+            tile = np.flipud(tile)
+            
+
+            # Create a tile-sized array with padding where needed
+            tile_padded = np.zeros((tile_size, tile_size), dtype=np.uint8)
+            tile_padded[-tile.shape[0]:, :tile.shape[1]] = tile.astype(np.uint8)
+
+            #tile_padded = np.flipud(tile_padded)
+            
+            
+            if img_format == 'png':
+                # Convert the tile to a PIL image and save
+                img = Image.fromarray(tile_padded, mode='L')
+                img.save(os.path.join(output_dir, f'tile_{tile_y}_{tile_x}.png'))
+            
+            elif img_format == 'tif':
+                # Calculate the transform for the current tile
+                transform = from_origin(
+                    src.transform.c + start_x * src.transform.a,  # Adjusted west coordinate
+                    src.transform.f + start_y * src.transform.e,  # Adjusted north coordinate
+                    src.transform.a,  # Pixel width
+                    src.transform.e   # Pixel height
+                )
+                # Save the tile as a GeoTIFF
+                tile_path = os.path.join(output_dir, f'tile_{tile_y}_{tile_x}.tif')
+                with rasterio.open(
+                    tile_path,
+                    'w',
+                    driver='GTiff',
+                    height=tile_padded.shape[0],
+                    width=tile_padded.shape[1],
+                    count=1,
+                    dtype=tile_padded.dtype,
+                    crs=input_crs,
+                    transform=transform,
+                ) as dst:
+                    dst.write(tile_padded, 1)
+
+    print(f"Tiles saved to {output_dir}")
+
+
 def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
     # Read the GeoJSON as a GeoDataFrame
     gdf = gpd.read_file(geojson_path)
     
-    
-
     # Ensure the GeoDataFrame has a 'hoehe' column
     if height_attribute not in gdf.columns:
         raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
