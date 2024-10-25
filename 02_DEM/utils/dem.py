@@ -65,6 +65,12 @@ def create_tiles(input_raster, output_dir, img_format='png', resolution=1, input
 
             #tile_padded = np.flipud(tile_padded)
             
+            # Calculate the width and height of one tile in meters
+            tile_width_meters = tile_size * src.transform.a
+            tile_height_meters = tile_size * abs(src.transform.e)
+
+            print(f"Tile size in meters: {tile_width_meters} x {tile_height_meters}")
+            
             
             if img_format == 'png':
                 # Convert the tile to a PIL image and save
@@ -75,7 +81,7 @@ def create_tiles(input_raster, output_dir, img_format='png', resolution=1, input
                 # Calculate the transform for the current tile
                 transform = from_origin(
                     src.transform.c + start_x * src.transform.a,  # Adjusted west coordinate
-                    src.transform.f + start_y * src.transform.e,  # Adjusted north coordinate
+                    src.transform.f + start_y * src.transform.e - tile_height_meters,  # Adjusted north coordinate
                     src.transform.a,  # Pixel width
                     src.transform.e   # Pixel height
                 )
