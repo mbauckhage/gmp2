@@ -2,7 +2,7 @@ from utils.dem import *
 import os
 import logging
 from datetime import datetime
-from utils.general_functions import ensure_directory_exists
+from utils.general_functions import ensure_directory_exists, clean_logs
 
 # Define paths and parameters
 # -----------------------------------------------
@@ -10,6 +10,8 @@ input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/
 output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
 output_png_path = f"02_DEM/output/tiles_{output_tiff_path.split('/')[-1].split('.')[0]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}/"
 height_attribute = "height"
+input_raster = output_tiff_path
+img_format = 'png'
 # -----------------------------------------------
 
 
@@ -40,5 +42,8 @@ logging.info(f"Minimum height: {min_height}")
 
 ensure_directory_exists(output_png_path)
 
-geojson_to_tiff(input_geojson_path, output_tiff_path,resolution=0.1, input_crs='EPSG:2056', height_attribute=height_attribute)
-geojson_to_png_tiles(input_geojson_path, output_png_path,resolution=0.1, input_crs='EPSG:2056', height_attribute=height_attribute,min_nonzero_value=min_height)
+#geojson_to_tiff(input_geojson_path, output_tiff_path,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute)
+create_tiles(input_raster, output_png_path,img_format=img_format,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute,min_nonzero_value=min_height)
+
+
+clean_logs(log_directory)

@@ -2,7 +2,7 @@ from utils.dem import *
 import os
 import logging
 from datetime import datetime
-from utils.general_functions import ensure_directory_exists
+from utils.general_functions import ensure_directory_exists, clean_logs
 
 
 input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton.geojson"
@@ -21,10 +21,11 @@ output_png_path = "output/"
 import os
 import rasterio
 
-tile_dir = "D:\\mbauckhage\\gmp2\\00_Transfer\\tiles_height_map_old_national_1975_processed_241024"
-output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/processed_data/height_map_from_tiles.png"
+tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/tiles_height_map_old_national_1975_20241025_093000"
+output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/tiles_height_map_old_national_1975_20241025_123453.png"
 
 filename_starts_with= 'height_map_tile'
+filename_starts_with= 'tile'
 
 
 # Get list of all files in the tile directory
@@ -64,3 +65,4 @@ with rasterio.open(output_tiff_path) as src:
 
 stitch_tiles(tile_dir, output_image_path,original_width, original_height, filename_starts_with=filename_starts_with)
 
+clean_logs(log_directory)

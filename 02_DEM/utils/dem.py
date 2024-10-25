@@ -158,6 +158,9 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         fill=0,  # Background value
         dtype=rasterio.float32
     )
+    
+    logging.info(f"Raster data type: {raster.dtype}, min={raster.min()}, max={raster.max()}")
+
 
     # Save the raster data to a GeoTIFF with EPSG:2056
     with rasterio.open(
@@ -322,9 +325,9 @@ def stitch_tiles(tile_dir, output_image_path, original_width, original_height,fi
             img = Image.open(os.path.join(tile_dir, f))
             
             # Transpose the image matrix
-            img = img.transpose(Image.Transpose.ROTATE_270)
+            #img = img.transpose(Image.Transpose.ROTATE_270)
             # Flip the image horizontally
-            img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            #img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
             
             tiles[(tile_y, tile_x)] = img
     
