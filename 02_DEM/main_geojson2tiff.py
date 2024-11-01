@@ -11,7 +11,7 @@ output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GM
 output_png_path = f"02_DEM/output/tiles_{output_tiff_path.split('/')[-1].split('.')[0]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}/"
 height_attribute = "height"
 input_raster = output_tiff_path
-img_format = 'png'
+img_formats = ['png','tif']
 # -----------------------------------------------
 
 
@@ -40,10 +40,13 @@ logging.basicConfig(
 min_height = get_min_height_from_geojson(input_geojson_path, height_attribute)
 logging.info(f"Minimum height: {min_height}")
 
-ensure_directory_exists(output_png_path)
+for img_format in img_formats:
+    logging.info(f"Creating tiles for format '{img_format}'")
+    output_png_path_ = output_png_path + img_format + '/'
 
-#geojson_to_tiff(input_geojson_path, output_tiff_path,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute)
-create_tiles(input_raster, output_png_path,img_format=img_format,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute,min_nonzero_value=min_height)
+    ensure_directory_exists(output_png_path)
 
+    #geojson_to_tiff(input_geojson_path, output_tiff_path,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute)
+    create_tiles(input_raster, output_png_path_,img_format=img_format,resolution=0.5, input_crs='EPSG:2056', height_attribute=height_attribute,min_nonzero_value=min_height)
 
 clean_logs(log_directory)
