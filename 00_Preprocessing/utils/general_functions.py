@@ -13,6 +13,12 @@ def ensure_directory_exists(directory_path):
     return directory_path
 
 
+def ensure_file_exists(file_path):
+    file = Path(file_path)
+    if not file.exists():
+        raise FileNotFoundError(f'File {file_path} does not exist.')
+    return file_path
+
 def clean_logs(log_directory):
     old_log_directory = Path(log_directory) / '_old'
 
