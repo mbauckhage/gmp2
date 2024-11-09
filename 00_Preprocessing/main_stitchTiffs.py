@@ -1,4 +1,4 @@
-from utils.general_functions import ensure_directory_exists, clean_logs
+from utils.general_functions import ensure_directory_exists, clean_logs,ensure_file_exists
 from utils.preprocessing import *
 import os
 import logging
@@ -9,17 +9,15 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 
 # Stitch the binary rasters together
 # -----------------------------------------------
-run_stitch_geotiffs = False
+run_stitch_geotiffs = True
 
-base_path = "/Volumes/Drobo/00 Studium/02_Master/3_Semester/GMP2/"
-base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
-folder_path = "00_Data/processed_data/annotations/hydrology/"
+base_path = "/Volumes/T7 Shield/GMP_Data/old_national/annotations/"
+#base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
+folder_paths = ["vegetation","buildings", "roads"]
+years = [1956, 1975, 1987]
 
-tiff_files = [base_path + folder_path + "LKg_1165/LKg_1165_1975/LKg_1165_1975_river_binary.tif",
-              base_path + folder_path + "LKg_1166/LKg_1166_1975/LKg_1166_1975_river_binary.tif",
-              base_path + folder_path + "LKg_1185/LKg_1185_1975/LKg_1185_1975_river_binary.tif",
-              base_path + folder_path + "LKg_1186/LKg_1186_1975/LKg_1186_1975_river_binary.tif"]  
-output_path = "00_Data/processed_data/stiched_river_1975.tif"
+
+output_base_path = f"00_Data/processed_data/stiched/"
 
 
 
@@ -44,8 +42,20 @@ logging.basicConfig(
 # -----------------------------------------------
 
 if run_stitch_geotiffs:
-    stitch_geotiffs(tiff_files, output_path)
+    
+    for folder_path in folder_paths:
+        for year in years:
+            tiff_files = [f"{base_path}{folder_path}/LKg_1165/LKg_1165_{year}.tif",
+                          f"{base_path}{folder_path}/LKg_1166/LKg_1166_{year}.tif",
+                          f"{base_path}{folder_path}/LKg_1185/LKg_1185_{year}.tif",
+                          f"{base_path}{folder_path}/LKg_1186/LKg_1186_{year}.tif"]  
+        
             
-
+            for file in tiff_files:
+                ensure_file_exists(file)
+            
+            output_path = f"{output_base_path}stiched_{folder_path}_{year}.tif"
+            stitch_geotiffs(tiff_files, output_path)
+   
         
 clean_logs(log_directory)

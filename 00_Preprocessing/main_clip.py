@@ -11,16 +11,18 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 
 # Clip the raster
 # -----------------------------------------------
-run_clip_geotiff = False
-input_for_clipping = "00_Data/processed_data/stiched_river_1975.tif"
-#input_for_clipping = base_path + "00_Data/processed_data/annotations/hydrology/LKg_1166/LKg_1166_1975/LKg_1166_1975_river.tif"
-output_of_clipping = input_for_clipping.replace(".tif","_clipped.tif")
+run_clip_geotiff = True
+
+base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
+input_for_clipping = "stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
+
+output_of_clipping =  "clipped" #input_for_clipping.replace(".tif","_clipped.tif")
 extent =  "01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
 
 
 # Setup logging
 # -----------------------------------------------
-log_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/logs/preprocessing/"
+log_directory = "../logs/preprocessing/"
 ensure_directory_exists(log_directory)
 log_file = os.path.join(log_directory, f"preprocessing_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 
@@ -39,12 +41,22 @@ logging.basicConfig(
 
 
 if run_clip_geotiff:
-    logging.info(f"Clipping raster {input_for_clipping} to {output_of_clipping}")
-    if isinstance(extent, str):
-        extent = get_extent_from_tiff(extent)
     
-    assert len(extent) == 4, "Extent must contain 4 values"
-    clip_geotiff(input_for_clipping, output_of_clipping, extent)
+    output_dir = base_path + output_of_clipping
+    ensure_directory_exists(output_dir)
+    
+    if isinstance(extent, str):
+                extent = get_extent_from_tiff(extent)
+    
+    for file in os.listdir(base_path + input_for_clipping):
+        if file.endswith(".tif"):
+            input = base_path + input_for_clipping + file
+            output = output_dir + "/" + file.replace(".tif","_clipped.tif")
+            
+            logging.info(f"Clipping raster {input} to {output}")
+            
+            assert len(extent) == 4, "Extent must contain 4 values"
+            clip_geotiff(input, output, extent)
             
         
 clean_logs(log_directory)
