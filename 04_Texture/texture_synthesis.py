@@ -12,10 +12,10 @@ import os
 # from: https://github.com/Devashi-Choudhary/Texture-Synthesis
 
 
-image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/04_Texture/References/buildings_1.jpeg"
+image_path = "/Volumes/T7 Shield/GMP_Data/processed_data/references/road_1.jpeg"
 reference_image_path = "/Volumes/T7 Shield/GMP_Data/processed_data/02_clipped/stiched_vegetation_1975_clipped.tif"
 
-block_size = 300
+block_size = 50
 mode = "Cut"
 
 
