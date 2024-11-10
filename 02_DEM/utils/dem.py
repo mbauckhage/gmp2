@@ -8,168 +8,26 @@ import os
 import logging
 from rasterio.transform import from_origin
 from tqdm import tqdm
-
-
-def create_tiles(input_raster, output_dir, img_format='png', resolution=1, input_crs='EPSG:2056', 
-                 height_attribute='hoehe', min_nonzero_value=450, tile_size=512, overlap=256):
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Read the raster file
-    with rasterio.open(input_raster) as src:
-        raster = src.read(1)  # Read the first band
-        width = src.width
-        height = src.height
-    
-    # Calculate the maximum value for normalization
-    max_value = raster.max()
-
-    # Normalize the raster to [0, 255]
-    raster_normalized = np.where(
-        raster > 0,  # Only normalize non-zero values
-        (raster - min_nonzero_value) / (max_value - min_nonzero_value) * 255,
-        0  # Set background or zero values to 0
-    )
-    raster_normalized = np.clip(raster_normalized, 0, 255)
-    
-    # Calculate the step size between tiles based on overlap
-    step_size = tile_size - overlap
-    
-    # Calculate the number of tiles needed in x and y directions with overlap
-    num_tiles_x = int(np.ceil((width - overlap) / step_size))
-    num_tiles_y = int(np.ceil((height - overlap) / step_size))
-
-    # Loop through each tile
-    for tile_x in range(num_tiles_x):
-        for tile_y in range(num_tiles_y):
-            # Calculate the pixel boundaries for the current tile with overlap
-            start_x = tile_x * step_size
-            start_y = tile_y * step_size
-            end_x = min(start_x + tile_size, width)
-            end_y = min(start_y + tile_size, height)
-            
-            logging.info(f"Processing tile ({tile_y}, {tile_x}): ({start_y}, {end_y}), ({start_x}, {end_x})")
-
-            # Extract the tile from the raster and flip it vertically
-            tile = raster_normalized[start_y:end_y, start_x:end_x]
-            
-            tile = np.flipud(tile)
-            
-
-            # Create a tile-sized array with padding where needed
-            tile_padded = np.zeros((tile_size, tile_size), dtype=np.uint8)
-            tile_padded[-tile.shape[0]:, :tile.shape[1]] = tile.astype(np.uint8)
-
-            #tile_padded = np.flipud(tile_padded)
-            
-            # Calculate the width and height of one tile in meters
-            tile_width_meters = tile_size * src.transform.a
-            tile_height_meters = tile_size * abs(src.transform.e)
-
-            logging.info(f"Tile size in meters: {tile_width_meters} x {tile_height_meters}")
-            
-            if img_format == 'png':
-                # Convert the tile to a PIL image and save
-                img = Image.fromarray(tile_padded, mode='L')
-                img.save(os.path.join(output_dir, f'tile_{tile_y}_{tile_x}.png'))
-            
-            elif img_format == 'tif':
-                # Calculate the transform for the current tile
-                transform = from_origin(
-                    src.transform.c + start_x * src.transform.a,  # Adjusted west coordinate
-                    src.transform.f + start_y * src.transform.e - tile_height_meters,  # Adjusted north coordinate
-                    src.transform.a,  # Pixel width
-                    src.transform.e   # Pixel height
-                )
-                # Save the tile as a GeoTIFF
-                tile_path = os.path.join(output_dir, f'tile_{tile_y}_{tile_x}.tif')
-                with rasterio.open(
-                    tile_path,
-                    'w',
-                    driver='GTiff',
-                    height=tile_padded.shape[0],
-                    width=tile_padded.shape[1],
-                    count=1,
-                    dtype=tile_padded.dtype,
-                    crs=input_crs,
-                    transform=transform,
-                ) as dst:
-                    dst.write(tile_padded, 1)
-
-    logging.info(f"Tiles saved to {output_dir}")
-
-
-
-def stitch_tiles_test(input_dir, output_image, tile_size=512, overlap=256, filename_starts_with='updated_tile'):
-    # Gather all tile file names
-    tile_files = sorted([
-        f for f in os.listdir(input_dir) 
-        if f.startswith(filename_starts_with) and (f.endswith('.png') or f.endswith('.jpg') or f.endswith('.tif') or f.endswith('.tiff'))
-    ])
-    logging.info(f"Found {len(tile_files)} tile files in the input directory")
-
-    # Calculate the number of tiles in x and y based on unique indices in filenames
-    num_tiles_x = len(set(int(os.path.splitext(f)[0].split('_')[3]) for f in tile_files))  # unique x values
-    num_tiles_y = len(set(int(os.path.splitext(f)[0].split('_')[2]) for f in tile_files))  # unique y values
-
-    logging.info(f"TEST: Number of tiles in x direction: {num_tiles_x}, y direction: {num_tiles_y}")
-
-    # Correctly calculate the dimensions of the stitched image
-    stitched_width = (num_tiles_x - 1) * (tile_size - overlap) + tile_size
-    stitched_height = (num_tiles_y - 1) * (tile_size - overlap) + tile_size
-
-    logging.info(f"Calculated stitched dimensions: {stitched_width}x{stitched_height}")
-
-    # Initialize cumulative and count arrays for averaging
-    cumulative_array = np.zeros((stitched_height, stitched_width), dtype=np.float32)
-    count_array = np.zeros((stitched_height, stitched_width), dtype=np.float32)
-
-    # Loop over each tile and place it on the stitched canvas
-    for tile_file in tqdm(tile_files):
-        # Remove extension and extract tile position from the filename
-        base_name = os.path.splitext(tile_file)[0]
-        tile_y, tile_x = map(int, base_name.split('_')[2:4])  # from 'updated_tile_y_x'
-
-        # Load the tile image
-        tile_path = os.path.join(input_dir, tile_file)
-        tile = np.array(Image.open(tile_path))
-
-        # Calculate the position on the stitched image
-        start_x = tile_x * (tile_size - overlap)
-        start_y = tile_y * (tile_size - overlap)
-        end_x = start_x + tile_size
-        end_y = start_y + tile_size
-
-        # Boundary check to ensure the tile fits in the stitched array
-        if end_x > stitched_width or end_y > stitched_height:
-            logging.warning(f"Tile at ({tile_y}, {tile_x}) with position ({start_y}, {end_y}), ({start_x}, {end_x}) exceeds bounds ({stitched_height}, {stitched_width}). Skipping this tile.")
-            continue
-
-        # Add the tile to the cumulative array and increment the count array
-        cumulative_array[start_y:end_y, start_x:end_x] += tile
-        count_array[start_y:end_y, start_x:end_x] += 1
-
-        logging.info(f"Added tile ({tile_y}, {tile_x}) at ({start_y}, {end_y}), ({start_x}, {end_x})")
-
-    # Compute the averaged image by dividing cumulative array by the count array
-    stitched_image = np.divide(
-        cumulative_array, count_array, out=np.zeros_like(cumulative_array), where=(count_array != 0)
-    ).astype(np.uint8)
-
-    # Save the final stitched image
-    stitched_img = Image.fromarray(stitched_image, mode='L')
-    stitched_img.save(output_image)
-    logging.info(f"Stitched image saved as {output_image}")
-
+from skimage.util import view_as_windows
+import cv2
+import json
 
 
 def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
+    
     # Read the GeoJSON as a GeoDataFrame
     gdf = gpd.read_file(geojson_path)
     
     # Ensure the GeoDataFrame has a 'hoehe' column
     if height_attribute not in gdf.columns:
         raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
+    
+    min_height, max_height = get_min_max_height_from_geojson(gdf, height_attribute)
+    logging.info(f"Min height: {min_height}, Max height: {max_height}")
+    
+    # Normalize height values between 0 and 255
+    gdf[height_attribute] = (((gdf[height_attribute] - min_height) / (max_height - min_height)) * 255).astype(np.uint8)
+
     
     # Select only the 'height' attribute and the geometry
     gdf = gdf[[height_attribute, 'geometry']]
@@ -182,15 +40,6 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
     logging.info(f"Number of invalid geometries: {len(invalid_geometries)}")
     # Remove all features that have 'is_valid' == False
     gdf = gdf[gdf['is_valid']]
-        
-
-    """# Check if CRS is set; if not, assign the input CRS (assuming EPSG:4326 if not provided)
-    if gdf.crs is None:
-        gdf.set_crs(input_crs, inplace=True)
-        logging.info(f"CRS was missing. Set to {input_crs}")
-
-    # Reproject the GeoDataFrame to EPSG:2056
-    gdf = gdf.to_crs(epsg=2056)"""
 
 
     # Set up the bounds of the raster (based on the geometry bounds)
@@ -205,7 +54,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
     transform = rasterio.transform.from_bounds(minx, miny, maxx, maxy, width, height)
 
     # Create an empty array to store the raster data
-    raster = np.zeros((height, width), dtype=rasterio.float32)
+    raster = np.zeros((height, width), dtype=rasterio.uint8)
 
     # Prepare geometries and corresponding 'hoehe' values for rasterization
     shapes = ((mapping(geom), value) for geom, value in zip(gdf.geometry, gdf[height_attribute]))
@@ -216,7 +65,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         out_shape=raster.shape,
         transform=transform,
         fill=0,  # Background value
-        dtype=rasterio.float32
+        dtype=rasterio.uint8
     )
     
     logging.info(f"Raster data type: {raster.dtype}, min={raster.min()}, max={raster.max()}")
@@ -230,7 +79,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         height=height,
         width=width,
         count=1,
-        dtype=rasterio.float32,
+        dtype=rasterio.uint8,
         crs='EPSG:2056',  # Set the CRS to EPSG:2056
         transform=transform,
     ) as dst:
@@ -335,91 +184,19 @@ def geojson_to_png_tiles(geojson_path, output_dir, resolution=0.5, input_crs='EP
 
     logging.info(f"Tiles saved to {output_dir}")
 
-def get_min_height_from_geojson(geojson_path, height_attribute='hoehe'):
-    # Read the GeoJSON as a GeoDataFrame
-    gdf = gpd.read_file(geojson_path)
+def get_min_max_height_from_geojson(gdf, height_attribute='hoehe'):
+
 
     # Ensure the GeoDataFrame has a 'hoehe' column
     if height_attribute not in gdf.columns:
         raise ValueError(f"GeoJSON must have a {height_attribute} attribute for heights")
 
-    # Extract the height column
-    heights = gdf[height_attribute]
+    
+    non_zero_heights = gdf[gdf[height_attribute] > 0][height_attribute]
+    min_height = non_zero_heights.min()
+    max_height = gdf[height_attribute].max()  
 
-    # Get the minimum non-zero height value
-    min_height = heights[heights > 0].min()
-
-    return min_height
-
-
-def stitch_tiles(tile_dir, output_image_path, original_width, original_height,filename_starts_with='tile',tile_size=512):
-    """
-    Stitch 512x512 tiles together to form the original image and remove padding.
-    
-    Parameters:
-    - tile_dir: directory containing the 512x512 tiles
-    - output_image_path: path to save the final stitched image
-    - original_width: original width of the image (before tiling)
-    - original_height: original height of the image (before tiling)
-    """
-    
-    # Get list of all files in the tile directory
-    tile_files = sorted(os.listdir(tile_dir))
-    
-    logging.info(f"Found {len(tile_files)} files in the tile directory")
-    
-    
-    # Initialize a dictionary to store the tiles by their coordinates
-    tiles = {}
-    
-    # Extract tile coordinates from filenames and load the images
-    for f in tile_files:
-        if f.startswith(filename_starts_with) and (f.endswith('.png') or f.endswith('.jpg') or f.endswith('.tif') or f.endswith('.tiff')):
-            logging.info(f"Processing tile: {f}")
-            # Extract coordinates from filename (assumed format: tile_y_x.png)
-            parts = f.split('_')
-            tile_y = int(parts[-2])
-            tile_x = int(parts[-1].split('.')[0])
-            
-            # Load the image and store it in the dictionary
-            img = Image.open(os.path.join(tile_dir, f)).transpose(Image.FLIP_TOP_BOTTOM)
-            
-            # Transpose the image matrix
-            #img = img.transpose(Image.Transpose.ROTATE_270)
-            # Flip the image horizontally
-            #img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-            
-            tiles[(tile_y, tile_x)] = img
-    
-    # Calculate how many tiles we have along x and y directions
-    num_tiles_x = max(coord[1] for coord in tiles.keys()) + 1
-    num_tiles_y = max(coord[0] for coord in tiles.keys()) + 1
-    
-    # Initialize a large blank array to hold the full stitched image
-    stitched_image = np.zeros((num_tiles_y * tile_size, num_tiles_x * tile_size), dtype=np.uint8)
-    
-    # Paste each tile into the correct position in the stitched image
-    for (tile_y, tile_x), img in tiles.items():
-        img_array = np.array(img)
-        
-        start_x = tile_x * tile_size
-        start_y = tile_y * tile_size
-        
-        stitched_image[start_y:start_y + tile_size, start_x:start_x + tile_size] = img_array
-    
-    # Crop the stitched image to the original width and height (removing any padding)
-    #stitched_image_cropped = stitched_image[:original_height, :original_width]
-    stitched_image_cropped = stitched_image
-    
-    # Convert the cropped stitched image back to a PIL image
-    final_image = Image.fromarray(stitched_image_cropped)
-    
-    # Save the final image
-    final_image.save(output_image_path)
-    
-    logging.info(f"Stitched image saved to {output_image_path}")
-    logging.info(f"Stitched image saved to {output_image_path}")
-
+    return min_height, max_height
 
 def adjust_heightmap_with_rivers(heightmap_path, river_mask_path, output_path, reduction_value=2.0, falloff_distance=50):
     """
@@ -468,7 +245,6 @@ def adjust_heightmap_with_rivers(heightmap_path, river_mask_path, output_path, r
     adjusted_heightmap_img.save(output_path)
     logging.info(f"Adjusted heightmap saved to {output_path}")
 
-
 def set_crs_for_tiles(reference_dir, input_dir, output_dir):
     # Create output folder if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -515,8 +291,6 @@ def set_crs_for_tiles(reference_dir, input_dir, output_dir):
     
     return output_dir
     
-    
-
 def rotate_and_flip_tif(input_folder, output_folder):
     # Create output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
@@ -556,3 +330,144 @@ def rotate_and_flip_tif(input_folder, output_folder):
             logging.info(f"Processed {filename} and saved to {output_tif_path}")
     
     return output_folder
+
+
+def generate_tiling(image_path, w_size, overlap=True, normalize=False):
+    win_size = w_size
+    pad_px = win_size // 2
+    in_img = np.array(Image.open(image_path))
+    
+    # Normalize the image to 0-255
+    if normalize: in_img = ((in_img - in_img.min()) / (in_img.max() - in_img.min()) * 255).astype(np.uint8)
+    
+    if overlap:
+        step = pad_px
+    else:
+        step = win_size
+
+    if len(in_img.shape) == 2:
+        img_pad = np.pad(in_img, [(pad_px, pad_px), (pad_px, pad_px)], 'edge')
+        tiles = view_as_windows(img_pad, (win_size, win_size), step=step)
+    else:
+        img_pad = np.pad(in_img, [(pad_px, pad_px), (pad_px, pad_px), (0, 0)], 'edge')
+        tiles = view_as_windows(img_pad, (win_size, win_size, 3), step=step)
+        
+    # Get the number of tiles in the x and y directions
+    num_y_tiles = tiles.shape[0]
+    num_x_tiles = tiles.shape[1]
+
+    # Print the number of tiles
+    print(f"Number of tiles in y direction: {num_y_tiles}")
+    print(f"Number of tiles in x direction: {num_x_tiles}")
+
+
+    tiles_lst = []
+    for row in range(tiles.shape[0]):
+        for col in range(tiles.shape[1]):
+            if len(in_img.shape) == 2:
+                tt = tiles[row, col, ...].copy()
+            else:
+                tt = tiles[row, col, 0, ...].copy()
+            tiles_lst.append(tt)
+    return tiles_lst, num_x_tiles, num_y_tiles
+
+def reconstruct_tiling(original_image_path, test_pred_dict, tile_save_path, w_size, image_debug=None, save_image=True):
+    in_patches = list(test_pred_dict.keys())
+    in_patches.sort()
+    patches_images = list(test_pred_dict.values())
+
+    # Convert patches_images to a numpy array
+    patches_images = np.array(patches_images)
+    logging.info(f"Number of patches: {patches_images.shape[0]}")
+
+    win_size = w_size
+    pad_px = win_size // 2
+
+    in_img = np.array(Image.open(original_image_path).convert("RGB"))
+    
+    if in_img is None:
+        print('original image {}'.format(original_image_path))
+
+    new_img = reconstruct_from_patches(patches_images, win_size, pad_px, in_img.shape, np.float32)
+
+    # If the image has more than one channel, only store the first channel
+    if new_img.shape[-1] > 1:
+        new_img = new_img[:, :, 0]
+    if save_image:
+        cv2.imwrite(tile_save_path, new_img)
+
+    if image_debug is not None:
+        cv2.imwrite(image_debug, new_img * 255)
+    
+    return new_img
+
+def reconstruct_from_patches(patches_images, patch_size, step_size, image_size_2d, image_dtype):
+    i_h, i_w = np.array(image_size_2d[:2]) + (patch_size, patch_size)
+    p_h = p_w = patch_size
+
+    # Initialize the reconstructed image array
+    img = np.zeros((i_h + p_h // 2, i_w + p_w // 2, 3), dtype=image_dtype)
+
+    numrows = (i_h) // step_size - 1
+    numcols = (i_w) // step_size - 1
+    expected_patches = numrows * numcols
+    
+    if patches_images.shape[0] != expected_patches:
+        raise ValueError(f"Expected {expected_patches} patches, got {patches_images.shape[0]}")
+
+    patch_offset = step_size // 2
+    patch_inner = p_h - step_size
+    
+    for row in range(numrows):
+        for col in range(numcols):
+            tt = patches_images[row * numcols + col]
+            tt_roi = tt[patch_offset:-patch_offset, patch_offset:-patch_offset]
+
+            # Check if the patch is grayscale
+            if len(tt.shape) == 2:  # Grayscale case
+                tt_roi = np.stack((tt_roi,)*3, axis=-1)  # Convert to RGB by stacking
+
+            img[row * step_size:row * step_size + patch_inner,
+                col * step_size:col * step_size + patch_inner] = tt_roi
+
+    return img[step_size // 2:-(patch_size + step_size // 2), step_size // 2:-(patch_size + step_size // 2), :]
+
+
+def save_tiles(tiles, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for i, tile in enumerate(tiles):
+
+        tile_image = Image.fromarray(tile)  # Convert numpy array to PIL Image
+        
+        # If the image is in floating point format, convert it to uint8 (or uint16)
+        if tile_image.mode == 'F':
+            tile_image = tile_image.convert('I')  # 'I' is for 32-bit integer, or you can convert to 'L' for 8-bit grayscale
+        
+        
+        tile_path = os.path.join(output_dir, f'tile_{i:04d}.png')  # Generate unique file name
+        tile_image.save(tile_path)  # Save the image as PNG
+
+
+def read_tiles(input_dir):
+    tile_images = []
+    for filename in sorted(os.listdir(input_dir)):
+        if filename.endswith('.png'):
+            tile_path = os.path.join(input_dir, filename)
+            tile_image = np.array(Image.open(tile_path))  # Read the image and convert to numpy array
+            tile_images.append(tile_image)
+    return tile_images
+
+
+
+
+
+def extract_extent(input_png_path, output_png_path, left, upper, right, lower):
+    # Open the PNG file
+    with Image.open(input_png_path) as img:
+        # Crop the image to the specified extent
+        cropped_img = img.crop((left, upper, right, lower))
+        # Save the cropped image
+        cropped_img.save(output_png_path)
+        print(f"Extracted extent and saved to {output_png_path}")
