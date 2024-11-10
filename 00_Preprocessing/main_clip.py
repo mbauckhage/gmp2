@@ -14,9 +14,9 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 run_clip_geotiff = True
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
-input_for_clipping = "stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
+input_for_clipping = "01_stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
 
-output_of_clipping =  "clipped" #input_for_clipping.replace(".tif","_clipped.tif")
+output_of_clipping =  "02_clipped" #input_for_clipping.replace(".tif","_clipped.tif")
 extent =  "01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
 
 
@@ -49,7 +49,7 @@ if run_clip_geotiff:
                 extent = get_extent_from_tiff(extent)
     
     for file in os.listdir(base_path + input_for_clipping):
-        if file.endswith(".tif"):
+        if file.endswith(".tif") and not file.startswith("._"):
             input = base_path + input_for_clipping + file
             output = output_dir + "/" + file.replace(".tif","_clipped.tif")
             

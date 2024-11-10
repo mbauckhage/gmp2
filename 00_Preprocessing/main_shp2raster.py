@@ -4,8 +4,7 @@ import os
 import logging
 from datetime import datetime
 from utils.preprocessing import clip_geotiff,get_extent_from_tiff
-
-
+from tqdm import tqdm
 
 
 
@@ -14,7 +13,9 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 get_raster_from_shapefiles = True
 overwrite = True
 resolution = 1  # 0.5 meters per pixel
-base_directory = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Data/old_national/annotations/hydrology/"
+base_path = "/Volumes/T7 Shield/GMP_Data/"
+file_dir = "old_national/annotations/hydrology/"
+output_dir_name ="processed_data_2"
 # -----------------------------------------------
 
 
@@ -41,13 +42,16 @@ logging.basicConfig(
 
     
 if get_raster_from_shapefiles:
-    for root, dirs, files in os.walk(base_directory):
+    for root, dirs, files in tqdm(os.walk(base_path+file_dir)):
         for file in files:
             
-            if file.endswith(".shp"):
+            
+            
+            
+            if file.endswith(".shp") and not file.startswith("._"): 
             
                 input = os.path.join(root, file)
-                output = input.replace("old_national","processed_data").replace(".shp","_binary.tif")
+                output = input.replace("old_national",output_dir_name).replace(".shp","_binary.tif")
                 output_directory = os.path.dirname(output)
                 ensure_directory_exists(output_directory)
                 
@@ -59,6 +63,7 @@ if get_raster_from_shapefiles:
                 polygons_to_raster(input, output_raster, resolution,overwrite=overwrite)
 
 
-            
+            else:
+                logging.info(f"Skipping file {str(file)}")
         
 clean_logs(log_directory)

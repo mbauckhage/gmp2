@@ -3,11 +3,14 @@ import logging
 import os
 import shutil
 
-def ensure_directory_exists(directory_path):
+def ensure_directory_exists(directory_path,create=True):
     directory = Path(directory_path)
     if not directory.exists():
-        directory.mkdir(parents=True, exist_ok=True)
-        print(f'Directory {directory_path} created.')
+        if create: 
+            directory.mkdir(parents=True, exist_ok=True)
+            print(f'Directory {directory_path} created.')
+        else:
+            raise FileNotFoundError(f'Directory {directory_path} does not exist.')
     else:
         print(f'Directory {directory_path} already exists.')
     return directory_path
