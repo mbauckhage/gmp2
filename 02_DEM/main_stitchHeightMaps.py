@@ -8,14 +8,17 @@ import rasterio
 
 # Define paths and parameters
 # -----------------------------------------------
-tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/tiles_height_map_old_national_1975_20241031_153817/HeightMaps_crs_fix_flip"
-output_image_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/final_dem_1975_overlap.png"
+tile_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/tiles_height_map_old_national_1975_20241107_174806/heightMaps_flip"
+output_image_path = f"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/final_dem_1975__{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
 
 # original file name for extent
-original_map_file = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/data/Siegfried.tif"
+original_map_file = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
 
 filename_starts_with= 'updated_tile'
 #filename_starts_with= 'tile'
+
+extent_extract = True
+left, right,upper, lower = 0, 4000, 0000, 4000
 
 
 # Get list of all files in the tile directory
@@ -46,6 +49,24 @@ with rasterio.open(original_map_file) as src:
     original_height = src.height
 
 
-stitch_tiles_test(tile_dir, output_image_path,original_width, original_height, filename_starts_with=filename_starts_with)
+
+# Read the tiles back into a list of arrays
+tiles_from_files = read_tiles(tile_dir)
+
+logging.info(f"Number of tiles: {len(tiles_from_files)}")
+
+# Check the shape of the first tile
+if tiles_from_files:
+    print(f"First tile shape: {tiles_from_files[0].shape}")
+
+tiles_array = np.array(tiles_from_files)
+test_pred_dict = {i: tiles_from_files[i] for i in range(len(tiles_array))}
+
+reconstructed_image = reconstruct_tiling(original_map_file, test_pred_dict, output_image_path, w_size=512)
+
+
+if extent_extract:
+    output_cropped_png_path = output_image_path.split('.')[0] + '_cropped.png'
+    extract_extent(output_image_path, output_cropped_png_path, left, upper, right, lower)
 
 clean_logs(log_directory)

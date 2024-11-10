@@ -3,11 +3,11 @@ from utils.general_functions import ensure_directory_exists
 from datetime import datetime
 
 # Define the directories
-base_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/00_Transfer/"
+base_dir = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/"
 #reference_dir = base_dir + "tiles_height_map_old_national_1975_20241031_153817/tif/"
-input_dir = base_dir + "tiles_20241101_103214/heightMaps/"
+input_dir = base_dir + "tiles_height_map_old_national_1975_20241107_174806/heightMaps/"
 #set_crs_output_dir = base_dir + "tiles_height_map_old_national_1975_20241031_153817/HeightMaps_crs_fix/"
-set_flip_output_dir = base_dir + "tiles_20241101_103214/heightMaps_flip/"
+set_flip_output_dir = base_dir + "tiles_height_map_old_national_1975_20241107_174806/heightMaps_flip/"
 
 
 
