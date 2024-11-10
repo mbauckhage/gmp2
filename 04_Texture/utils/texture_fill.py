@@ -33,9 +33,9 @@ def apply_mask(image, mask, replacement_image):
     # Ensure the replacement image is of the same shape as the mask
     replacement_resized = np.array(replacement_image)
     
-    print(image.shape)
-    print(mask.shape)
-    print(replacement_resized.shape)
+    print("Image shape:      ",image.shape)
+    print("Mask shape:       ",mask.shape)
+    print("Replacement shape:",replacement_resized.shape)
     
     if replacement_resized.shape != mask.shape + (3,):  # Ensure the replacement has 3 channels
         raise ValueError("Replacement image and mask must have the same dimensions.")
@@ -73,6 +73,8 @@ def fill_masks(binarymasks, quilt_images, output_path):
 
     for mask, quilt_images in tqdm(zip(binarymasks, quilt_images)):
         
+        print(f"Processing image: ",mask.split("/")[-1])
+        
         # Read the masks
         mask = read_geotiff_mask(mask)
         
@@ -90,3 +92,36 @@ def fill_masks(binarymasks, quilt_images, output_path):
     final_image_pil = Image.fromarray(final_image)
     final_image_pil.save(output_path)
     print(f"Final image saved at: {output_path}")
+    
+    
+    from PIL import Image
+import numpy as np
+
+def make_black_pixels_transparent(input_path, output_path):
+    """
+    Reads a PNG image, sets all black pixels (0, 0, 0) to transparent, and saves the new image.
+    """
+    # Open the image
+    img = Image.open(input_path).convert("RGBA")
+    
+    # Convert image to numpy array
+    data = np.array(img)
+    
+    # Extract the RGB channels
+    r, g, b, a = data[..., 0], data[..., 1], data[..., 2], data[..., 3]
+    
+    # Create a mask where all pixels that are pure black will be made transparent
+    black_pixels_mask = (r == 0) & (g == 0) & (b == 0)
+    
+    # Set alpha channel to 0 (transparent) for black pixels
+    data[..., 3] = np.where(black_pixels_mask, 0, a)
+    
+    # Convert the modified array back to an image
+    new_img = Image.fromarray(data, mode="RGBA")
+    
+    # Save the resulting image
+    new_img.save(output_path)
+    print(f"Image saved with transparent black pixels at: {output_path}")
+
+
+
