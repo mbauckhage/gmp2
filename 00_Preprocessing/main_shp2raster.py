@@ -14,8 +14,9 @@ get_raster_from_shapefiles = True
 overwrite = True
 resolution = 1  # 0.5 meters per pixel
 base_path = "/Volumes/T7 Shield/GMP_Data/"
-file_dir = "old_national/annotations/hydrology/"
-output_dir_name ="processed_data_2"
+maps_dir = "siegfried/"
+file_dir = f"{maps_dir}annotations/hydrology/"
+output_dir_name ="siegfried/"
 # -----------------------------------------------
 
 
@@ -51,7 +52,7 @@ if get_raster_from_shapefiles:
             if file.endswith(".shp") and not file.startswith("._"): 
             
                 input = os.path.join(root, file)
-                output = input.replace("old_national",output_dir_name).replace(".shp","_binary.tif")
+                output = input.replace(maps_dir,output_dir_name).replace(".shp","_binary.tif")
                 output_directory = os.path.dirname(output)
                 ensure_directory_exists(output_directory)
                 

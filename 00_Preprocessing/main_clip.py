@@ -1,4 +1,4 @@
-from utils.general_functions import ensure_directory_exists, clean_logs
+from utils.general_functions import ensure_directory_exists, clean_logs,ensure_file_exists
 from utils.preprocessing import *
 import os
 import logging
@@ -13,11 +13,11 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 # -----------------------------------------------
 run_clip_geotiff = True
 
-base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
-input_for_clipping = "01_stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
+base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/" #"/Volumes/T7 Shield/GMP_Data/processed_data/"
+input_for_clipping = "01_stiched/" #"map_sheets/" #"01_stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
 
 output_of_clipping =  "02_clipped" #input_for_clipping.replace(".tif","_clipped.tif")
-extent =  "01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
+extent =  "../01_Segmentation/data/Siegfried.tif" # Set your extent here, like [0, 0, 0, 0] or filename to calculate extent from
 
 
 # Setup logging
@@ -53,10 +53,13 @@ if run_clip_geotiff:
             input = base_path + input_for_clipping + file
             output = output_dir + "/" + file.replace(".tif","_clipped.tif")
             
-            logging.info(f"Clipping raster {input} to {output}")
-            
-            assert len(extent) == 4, "Extent must contain 4 values"
-            clip_geotiff(input, output, extent)
+            if ensure_file_exists(output, raise_error=False):
+                logging.info(f"File {output} already exists. Skipping.")
+
+            else:
+                logging.info(f"Clipping raster {input} to {output}")
+                assert len(extent) == 4, "Extent must contain 4 values"
+                clip_geotiff(input, output, extent)
             
         
 clean_logs(log_directory)

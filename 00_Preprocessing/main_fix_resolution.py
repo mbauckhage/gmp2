@@ -7,7 +7,7 @@ from utils.preprocessing import ensure_directory_exists
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
 input_for_masking = "02_clipped/"
-
+new_resolution = (1, 1)  
 
 
 
@@ -53,7 +53,7 @@ def resample_geotiff(input_path, output_path, target_resolution):
     print(f"Resampled GeoTIFF saved at: {output_path}")
 
 
-new_resolution = (1, 1)  
+
 
 input_folder = os.path.join(base_path, input_for_masking)
 output_folder = os.path.join(base_path, "03_resampled/")

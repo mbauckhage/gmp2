@@ -3,7 +3,6 @@ from utils.preprocessing import *
 import os
 import logging
 from datetime import datetime
-from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 from tqdm import tqdm
 
 
@@ -12,13 +11,13 @@ from tqdm import tqdm
 # -----------------------------------------------
 run_stitch_geotiffs = True
 
-base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/00_annotations/"
+base_path = "/Volumes/T7 Shield/GMP_Data/old_national/map_sheets/"
 #base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
-folder_paths = ["rivers"]
-years = [1956, 1975, 1987]
-lkgs = ["LKg_1165","LKg_1166","LKg_1185","LKg_1186"] # "LKg_1165","LKg_1166","LKg_1185","LKg_1186"
-additional = "_binary"
-
+folder_paths = [""]
+years = [1975,1987] #   1878, 1899,1904,1912,1930,1939
+lkgs = ["LKg_1165","LKg_1166","LKg_1185","LKg_1186"] #  # "rgb_TA_315","rgb_TA_318","rgb_TA_329","rgb_TA_332"
+additional = "" #"_predictions" #_binary #_black_ms_5_50
+assign_crs_to_files = True
 
 output_base_path = f"/Volumes/T7 Shield/GMP_Data/processed_data/01_stiched/"
 
@@ -55,15 +54,26 @@ if run_stitch_geotiffs:
             
             tiff_files = []
             for lkg in lkgs:
-                ensure_directory_exists(base_path+folder_path+f"/{lkg}",create=False)
-                tiff_files.append(f"{base_path}{folder_path}/{lkg}/{lkg}_{year}{additional}.tif")
+                if folder_path != "": ensure_directory_exists(base_path+folder_path+f"/{lkg}",create=False)
+                else: ensure_directory_exists(base_path+folder_path+f"{lkg}",create=False)
+                
+                tif_file_path = f"{base_path}{folder_path}/{lkg}/{lkg}_{year}{additional}.tif"
+                tif_file_path = tif_file_path.replace("//","/")
+                tiff_files.append(tif_file_path)
             
             
             for file in tiff_files:
                 ensure_file_exists(file)
+                
+                
+            if assign_crs_to_files:
+                # Reproject all files and assign CRS if missing
+                corrected_files = [assign_crs(file) for file in tiff_files]
+            else:
+                corrected_files = tiff_files
             
             output_path = f"{output_base_path}stiched_{folder_path}_{year}.tif"
-            stitch_geotiffs(tiff_files, output_path)
+            stitch_geotiffs(corrected_files, output_path)
    
         
 clean_logs(log_directory)

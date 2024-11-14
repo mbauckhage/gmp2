@@ -11,9 +11,46 @@ import logging
 from rasterio.windows import from_bounds
 from rasterio.merge import merge
 
+from rasterio.enums import Resampling
+from rasterio.warp import reproject, calculate_default_transform
+
 
 # Use relative import for general_functions
 from .general_functions import ensure_directory_exists
+
+
+
+def assign_crs(tiff_file, target_crs='EPSG:21781'):
+    with rasterio.open(tiff_file) as src:
+        if src.crs is None:
+            print(f"Assigning CRS to {tiff_file}")
+            transform, width, height = calculate_default_transform(
+                src.crs if src.crs else target_crs, target_crs, src.width, src.height, *src.bounds
+            )
+            kwargs = src.meta.copy()
+            kwargs.update({
+                'crs': target_crs,
+                'transform': transform,
+                'width': width,
+                'height': height
+            })
+            # Save the reprojected version
+            reprojected_path = tiff_file.replace(".tif", "_reprojected.tif")
+            with rasterio.open(reprojected_path, 'w', **kwargs) as dst:
+                for i in range(1, src.count + 1):
+                    reproject(
+                        source=rasterio.band(src, i),
+                        destination=rasterio.band(dst, i),
+                        src_transform=src.transform,
+                        src_crs=src.crs,
+                        dst_transform=transform,
+                        dst_crs=target_crs,
+                        resampling=Resampling.nearest
+                    )
+            return reprojected_path
+        else:
+            return tiff_file
+
 
 
 
@@ -61,7 +98,8 @@ def polygons_to_raster(river_shapefile, output_raster, resolution, input_crs='EP
         logging.warning(f"Filtered out {invalid_count} invalid geometries")
     
     if valid_gdf.empty:
-        raise ValueError("No valid geometries found in the shapefile")
+        logging.warning("No valid geometries found in the shapefile")
+        return
 
     # Set up the bounds of the raster (based on the geometry bounds)
     minx, miny, maxx, maxy = valid_gdf.total_bounds
@@ -119,7 +157,7 @@ def depth_raster(input_raster, output_raster, max_depth=2):
     with rasterio.open(input_raster) as src:
         raster = src.read(1)
 
-    print("Calculate distance to edge")
+    logging.info("Calculate distance to edge")
     # Calculate Euclidean distance to the nearest edge of the river polygons
     distance_to_edge = distance_transform_edt(raster)
     depth_gradient = distance_to_edge / 5
@@ -130,7 +168,8 @@ def depth_raster(input_raster, output_raster, max_depth=2):
 
     # Apply the river mask (depth only inside river polygons)
     river_depth_raster = np.where(raster == 1, depth_gradient, 0)
-    
+
+    logging.info(f"Write raster to file {output_raster}")
     # Write the depth raster to a GeoTIFF file
     with rasterio.open(
         output_raster,
@@ -145,7 +184,7 @@ def depth_raster(input_raster, output_raster, max_depth=2):
     ) as dst:
         dst.write(river_depth_raster, 1)
 
-    print(f"River depth raster saved to {output_raster}")
+    logging.info(f"River depth raster saved to {output_raster}")
 
 
 
@@ -371,6 +410,16 @@ def stitch_geotiffs(tiff_files, output_path, crs='EPSG:21781'):
     """
     
     logging.info(f"Stitching {len(tiff_files)} GeoTIFF files")
+    
+    
+    for file in tiff_files:
+        with rasterio.open(file) as src:
+            logging.info(f"\nFile: {file}")
+            logging.info(f"CRS: {src.crs}")
+            logging.info(f"Transform: {src.transform}")
+            logging.info(f"Bounds: {src.bounds}")
+            logging.info(f"Width, Height: {src.width}, {src.height}")
+            logging.info(f"Is Georeferenced: {'No' if src.crs is None or src.transform == rasterio.Affine.identity() else 'Yes'}\n")
 
     # List to store opened raster objects
     src_files_to_mosaic = []

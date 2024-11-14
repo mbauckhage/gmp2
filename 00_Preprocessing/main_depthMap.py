@@ -15,12 +15,15 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 create_river_depth_raster = True
 based_on_shapefile = False
 overwrite = True
-max_depth = 3
-base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
-folder_path = "00_Data/processed_data/"
-input_filename = "stiched_river_1975_clipped.tif"
-tiff_files = [base_path + folder_path + input_filename]  
-output_path = "00_Data/processed_data/river_depth_raster_1975.tif"
+max_depth = 1 # stream = 1m, river = 4m, lake = 20m, hydrology = 3m
+
+annotations = ["stream"] #"hydrology","rivers","lake","stream"
+
+
+base_path = "/Volumes/T7 Shield/GMP_Data/"
+folder_path = "processed_data/03_resampled/"
+
+output_dir = f"{base_path}processed_data/05_DEM/depth_maps/"
 
 
 # Create the river depth raster base on shape
@@ -54,17 +57,26 @@ logging.basicConfig(
 if create_river_depth_raster:
     
     if not based_on_shapefile:
-        for file in tiff_files:
-            logging.info("Input file: ",file)
-            output_raster = file.replace(".tif","_depth.tif")
-            depth_raster(file,output_raster,max_depth)
+        
+        input_dir = base_path + folder_path
+        
+        for annotation in annotations:
+            for file in os.listdir(input_dir):
+                if annotation in file and not file.startswith("._"):
+                    input = os.path.join(input_dir, file)
+        
+                    logging.info(f"Input file: {input}")
+                    logging.info(f"Output directory: {output_dir}")
+                    ensure_directory_exists(output_dir)
+                    
+                    year = file.split("_")[-2]
+                    output_path = output_dir + f"{annotation}_depth_raster_{year}.tif"
+                    depth_raster(input,output_path,max_depth)
+                    logging.info(f"Created river depth raster: {output_path}")
     
     if based_on_shapefile:
         for root, dirs, files in os.walk(base_path):
             for file in files:
-                
-                
-                
                 
                 
                 if file.endswith(".shp"):
