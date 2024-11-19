@@ -10,7 +10,11 @@ from rasterio.transform import from_origin
 from tqdm import tqdm
 from skimage.util import view_as_windows
 import cv2
-import json
+
+import rasterio
+import numpy as np
+from rasterio.warp import reproject, calculate_default_transform, Resampling
+from rasterio.windows import from_bounds
 
 
 def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:2056', height_attribute='hoehe'):
@@ -471,3 +475,83 @@ def extract_extent(input_png_path, output_png_path, left, upper, right, lower):
         # Save the cropped image
         cropped_img.save(output_png_path)
         print(f"Extracted extent and saved to {output_png_path}")
+        
+        
+
+
+def subtract_raster_based_on_coordinates(dem_path, river_depth_path, output_path):
+    """
+    Subtracts a river depth map from a DEM, aligning them by their coordinates.
+    If necessary, resamples the river depth map to the DEM grid before subtraction.
+    
+    :param dem_path: Path to the DEM GeoTIFF.
+    :param river_depth_path: Path to the river depth GeoTIFF.
+    :param output_path: Path to save the resulting GeoTIFF after subtraction.
+    """
+    
+    # Open the river depth file first to handle the reprojection
+    with rasterio.open(river_depth_path) as river_src:
+        river_depth_data = river_src.read(1)
+        river_crs = river_src.crs
+        river_transform = river_src.transform
+        river_bounds = river_src.bounds
+        
+    # Open the DEM file and perform the cropping inside the with block
+    with rasterio.open(dem_path) as dem_src:
+        dem_data = dem_src.read(1)
+        dem_crs = dem_src.crs
+        dem_transform = dem_src.transform
+        dem_meta = dem_src.meta
+        dem_bounds = dem_src.bounds
+    
+        # Check if CRS and transform match
+        if dem_crs != river_crs:
+            raise ValueError(f"CRS mismatch: DEM CRS ({dem_crs}) and River Depth CRS ({river_crs}) must be the same.")
+        
+        # Calculate the target transform and size for alignment
+        transform, width, height = calculate_default_transform(
+            river_crs, dem_crs, river_depth_data.shape[1], river_depth_data.shape[0], *river_bounds)
+        
+        # Create a new array for the reprojected river depth data (resampled to DEM grid)
+        reprojected_river_depth = np.empty((height, width), dtype=np.float32)
+
+        # Reproject river depth data onto the DEM grid (use nearest-neighbor resampling here)
+        reproject(
+            river_depth_data,  # Source band
+            reprojected_river_depth,  # Destination band
+            src_transform=river_transform,
+            src_crs=river_crs,
+            dst_transform=transform,
+            dst_crs=dem_crs,
+            resampling=Resampling.nearest
+        )
+        
+        # Crop both rasters to the common bounding box
+        common_bounds = (max(dem_bounds[0], river_bounds[0]),  # min x
+                         max(dem_bounds[1], river_bounds[1]),  # min y
+                         min(dem_bounds[2], river_bounds[2]),  # max x
+                         min(dem_bounds[3], river_bounds[3]))  # max y
+        
+        # Get the window (pixel coordinates) for the common bounds
+        window = from_bounds(*common_bounds, transform=dem_transform)
+        
+        # Crop both DEM and reprojected river depth data to the same window
+        dem_cropped = dem_src.read(1, window=window)
+        river_depth_cropped = reprojected_river_depth[window.toslices()]  # Corrected usage of tosllices()
+
+        # Perform the subtraction: DEM - River Depth
+        riverbed_dem = dem_cropped - river_depth_cropped
+
+        # Update the metadata for the output file (ensure it uses DEM's transform and CRS)
+        dem_meta.update({
+            'dtype': 'float32',  # Adjust the data type to float32 for precision
+            'crs': dem_crs,
+            'transform': dem_transform,
+            'count': 1  # We are writing a single band (the result of the subtraction)
+        })
+
+        # Write the resulting image to a new GeoTIFF file
+        with rasterio.open(output_path, 'w', **dem_meta) as dst:
+            dst.write(riverbed_dem, 1)
+
+        print(f"Processed DEM saved at: {output_path}")
