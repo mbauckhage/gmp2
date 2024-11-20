@@ -4,6 +4,13 @@ import os
 import shutil
 import json
 
+def ensure_file_exists(file_path, raise_error=True):
+    file = Path(file_path)
+    if not file.exists():
+        if raise_error:
+            raise FileNotFoundError(f'File {file_path} does not exist.')
+    else: return True
+
 def ensure_directory_exists(directory_path):
     directory = Path(directory_path)
     if not directory.exists():
