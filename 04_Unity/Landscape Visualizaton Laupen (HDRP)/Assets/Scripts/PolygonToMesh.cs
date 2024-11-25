@@ -18,8 +18,21 @@ public class PolygonToMesh : MonoBehaviour
         // Parse GeoJSON
         var geoData = GeoJsonParser.Parse(geoJsonFile.text);
 
+
+        if (geoData.Polygons == null)
+        {
+            Debug.LogError("geoData.Polygons is null!");
+            return;
+        }
+
+        Debug.Log($"Number of polygons: {geoData.Polygons.Count}");
+
+
+
+        Debug.Log("Going through polyongs...");
         foreach (var polygon in geoData.Polygons)
         {
+            Debug.Log(polygon.Coordinates);
             // Convert coordinates to Unity space
             Vector3[] vertices = ConvertToUnitySpace(polygon.Coordinates);
 
@@ -32,12 +45,17 @@ public class PolygonToMesh : MonoBehaviour
             mesh.vertices = vertices;
             mesh.triangles = triangles;
 
+            Debug.Log("Save mesh...");
+
             // Save the mesh asset
             SaveMesh(mesh, "Assets/GeneratedMeshes/GeneratedMesh.asset");
+
+            Debug.Log("Create Mesh Game Object");
 
             // Add it to the scene for visualization
             CreateMeshGameObject(mesh);
         }
+
     }
 
     private Vector3[] ConvertToUnitySpace(List<Vector2> coordinates)

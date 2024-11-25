@@ -4,10 +4,9 @@ using UnityEditor;
 
 public class BatchHeightmapMeshGenerator : MonoBehaviour
 {
-    public string heightmapFolder = "Assets/Heightmaps/river_tiles"; // Path to the folder with heightmap PNGs
+    public string heightmapRootFolder = "Assets/Heightmaps/river_tiles"; // Path to the root folder with heightmap subfolders
     public Material defaultMaterial; // Material to apply to the generated meshes
     public float heightMultiplier = 1f; // Adjust this to control the vertical scale of the mesh
-    public string meshSavePath = "Assets/Meshes/river_tiles"; // Path to save generated meshes
 
     private void Start()
     {
@@ -17,29 +16,52 @@ public class BatchHeightmapMeshGenerator : MonoBehaviour
     [ContextMenu("Generate All Meshes")]
     public void GenerateAllMeshes()
     {
-        if (!Directory.Exists(heightmapFolder))
+        if (!Directory.Exists(heightmapRootFolder))
         {
-            Debug.LogError($"The specified folder does not exist: {heightmapFolder}");
+            Debug.LogError($"The specified folder does not exist: {heightmapRootFolder}");
             return;
         }
 
-        string[] pngFiles = Directory.GetFiles(heightmapFolder, "*.png");
-        if (pngFiles.Length == 0)
+        // Get all subdirectories (subfolders) inside the root folder
+        string[] subfolders = Directory.GetDirectories(heightmapRootFolder);
+        if (subfolders.Length == 0)
         {
-            Debug.LogWarning("No PNG files found in the specified folder.");
+            Debug.LogWarning("No subfolders found in the specified root folder.");
             return;
         }
 
-        foreach (string filePath in pngFiles)
+        foreach (string subfolder in subfolders)
         {
-            Debug.Log("Start processing "+ filePath);
-            CreateMeshFromHeightmap(filePath);
+            Debug.Log("Start processing folder: " + subfolder);
+            // Process all PNG files in the current subfolder
+            string[] pngFiles = Directory.GetFiles(subfolder, "*.png");
+            if (pngFiles.Length == 0)
+            {
+                Debug.LogWarning($"No PNG files found in the folder: {subfolder}");
+                continue;
+            }
+
+            // Save path will be based on the subfolder name
+            string folderName = Path.GetFileName(subfolder); // Get folder name
+            string meshSavePath = $"Assets/Meshes/River_Tiles/{folderName}";
+            
+            // Create a subfolder inside the "Assets/Meshes/River_Tiles" if it doesn't exist
+            if (!Directory.Exists(meshSavePath))
+            {
+                Directory.CreateDirectory(meshSavePath);
+            }
+
+            // Process each PNG file in the subfolder
+            foreach (string filePath in pngFiles)
+            {
+                CreateMeshFromHeightmap(filePath, meshSavePath);
+            }
         }
 
         Debug.Log("All meshes generated successfully!");
     }
 
-    private void CreateMeshFromHeightmap(string filePath)
+    private void CreateMeshFromHeightmap(string filePath, string meshSavePath)
     {
         // Load the heightmap texture
         Texture2D heightmapTexture = LoadHeightmapTexture(filePath);
@@ -60,12 +82,9 @@ public class BatchHeightmapMeshGenerator : MonoBehaviour
             // Log the tile position
             Debug.Log($"Tile '{fileName}' position: {tilePosition}");
 
-
             // Create a new GameObject to hold the mesh
-            GameObject tileObject = new GameObject(Path.GetFileNameWithoutExtension(filePath));
+            GameObject tileObject = new GameObject(fileName);
             tileObject.transform.position = Vector3.zero;
-
-
 
             // Add HeightmapMeshGenerator component
             HeightmapMeshGenerator meshGenerator = tileObject.AddComponent<HeightmapMeshGenerator>();
@@ -73,19 +92,15 @@ public class BatchHeightmapMeshGenerator : MonoBehaviour
             meshGenerator.heightMultiplier = heightMultiplier;
             meshGenerator.meshMaterial = defaultMaterial;
             meshGenerator.meshSavePath = meshSavePath;
-            meshGenerator.meshName = Path.GetFileNameWithoutExtension(filePath);
+            meshGenerator.meshName = fileName;
 
-            // Generate the mesh
+            // Generate the mesh and save it to the appropriate folder
             meshGenerator.GenerateMeshFromHeightmap();
         }
         else
         {
             Debug.LogWarning($"Filename does not follow expected pattern: {fileName}");
         }
-
-
-
-
     }
 
     private Texture2D LoadHeightmapTexture(string filePath)

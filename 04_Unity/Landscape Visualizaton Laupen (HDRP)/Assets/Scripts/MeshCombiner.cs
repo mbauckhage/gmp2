@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class InstanceCombiner : MonoBehaviour
 {
-    // Source Meshes you want to combine
-    [SerializeField] private List<MeshFilter> listMeshFilter;
+    // GameObject containing all the meshes to combine
+    [SerializeField] private GameObject sourceGameObject;
 
     // Make a new mesh to be the target of the combine operation
     [SerializeField] private MeshFilter TargetMesh;
@@ -13,26 +13,35 @@ public class InstanceCombiner : MonoBehaviour
     [ContextMenu("Combine Meshes")]
     private void CombineMesh()
     {
-        if (listMeshFilter.Count == 0)
+        if (sourceGameObject == null)
         {
-            Debug.LogWarning("No meshes to combine. Please assign meshes to the list.");
+            Debug.LogWarning("No source GameObject assigned. Please assign a GameObject with MeshFilters.");
+            return;
+        }
+
+        // Retrieve all MeshFilters from the source GameObject and its children
+        var meshFilters = new List<MeshFilter>(sourceGameObject.GetComponentsInChildren<MeshFilter>());
+
+        if (meshFilters.Count == 0)
+        {
+            Debug.LogWarning("No MeshFilters found in the provided GameObject. Please make sure it has MeshFilters attached.");
             return;
         }
 
         // Make an array of CombineInstance.
-        var combine = new CombineInstance[listMeshFilter.Count];
+        var combine = new CombineInstance[meshFilters.Count];
 
         // Set Mesh And their Transform to the CombineInstance
-        for (int i = 0; i < listMeshFilter.Count; i++)
+        for (int i = 0; i < meshFilters.Count; i++)
         {
-            if (listMeshFilter[i] == null || listMeshFilter[i].sharedMesh == null)
+            if (meshFilters[i] == null || meshFilters[i].sharedMesh == null)
             {
                 Debug.LogWarning($"MeshFilter at index {i} is missing or has no mesh assigned.");
                 continue;
             }
 
-            combine[i].mesh = listMeshFilter[i].sharedMesh;
-            combine[i].transform = listMeshFilter[i].transform.localToWorldMatrix;
+            combine[i].mesh = meshFilters[i].sharedMesh;
+            combine[i].transform = meshFilters[i].transform.localToWorldMatrix;
         }
 
         // Create an empty Mesh
@@ -44,11 +53,11 @@ public class InstanceCombiner : MonoBehaviour
         // Combine meshes
         mesh.CombineMeshes(combine, true, true);
 
-        // Assign the target mesh to the mesh filter of the combination game object
+        // Assign the target mesh to the mesh filter of the combination GameObject
         TargetMesh.mesh = mesh;
 
 #if UNITY_EDITOR
-        // Save The Mesh To Location
+        // Save the Mesh to the asset folder
         SaveMesh(TargetMesh.sharedMesh, gameObject.name, false, true);
 #endif
 

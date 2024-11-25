@@ -8,6 +8,7 @@ public class TileMeshPlacer : MonoBehaviour
     public int gridWidth = 5; // Number of tiles in the X direction
     public int gridHeight = 5; // Number of tiles in the Y direction
     public float tileSize = 300f; // Size of each tile (matches texture dimensions)
+    public float overlap = 1.0f; // Overlap between tiles
     public Material defaultMaterial; // Material to apply to the meshes
 
     [ContextMenu("Place Tiles in Scene")]
@@ -36,7 +37,7 @@ public class TileMeshPlacer : MonoBehaviour
                 GameObject tileObject = new GameObject(tileName);
 
                 // Calculate position based on the starting position
-                Vector3 position = new Vector3(x * tileSize, 0, -y * tileSize);
+                Vector3 position = new Vector3(x * tileSize - x * overlap, 0, -(y * tileSize) + y * overlap);
                 tileObject.transform.position = position;
 
                 // Set parent object for hierarchy organization
