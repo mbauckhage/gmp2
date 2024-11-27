@@ -17,7 +17,7 @@ based_on_shapefile = False
 overwrite = True
 max_depth = 1 # stream = 1m, river = 4m, lake = 20m, hydrology = 3m
 
-annotations = ["stream"] #"hydrology","rivers","lake","stream"
+annotations = ["stream"] #"hydrology",
 
 
 base_path = "/Volumes/T7 Shield/GMP_Data/"

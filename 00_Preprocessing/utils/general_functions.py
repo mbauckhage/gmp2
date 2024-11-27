@@ -21,6 +21,8 @@ def ensure_file_exists(file_path, raise_error=True):
     if not file.exists():
         if raise_error:
             raise FileNotFoundError(f'File {file_path} does not exist.')
+        else:
+            return False
     else: return True
 
 def clean_logs(log_directory):
@@ -49,3 +51,4 @@ def clean_logs(log_directory):
     print('Done moving log files.')
     logging.info('Done moving log files.')
    
+

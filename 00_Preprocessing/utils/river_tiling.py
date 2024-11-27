@@ -38,6 +38,8 @@ def save_tiles(tiles, output_dir, num_x_tiles, num_y_tiles):
         os.makedirs(output_dir)
 
     index = 0
+    
+            
     for y in range(num_y_tiles):
         for x in range(num_x_tiles):
             tile_image = Image.fromarray(tiles[index])  # Convert numpy array to PIL Image
@@ -51,13 +53,14 @@ def save_tiles(tiles, output_dir, num_x_tiles, num_y_tiles):
             index += 1
 
 
+import numpy as np
+from PIL import Image
+from skimage.util import view_as_windows
 
-
-    
-def generate_tiling(image_path, w_size, overlap=True, custom_overlap=None,normalize=False):
+def generate_tiling(image_path, w_size, overlap=True, custom_overlap=None, normalize=False):
     """
     Generates tiled sub-images from a given image with specified window size and overlap.
-
+    
     Parameters:
     - image_path (str): Path to the input image.
     - w_size (int): Size of the window (width and height in pixels).
@@ -70,30 +73,35 @@ def generate_tiling(image_path, w_size, overlap=True, custom_overlap=None,normal
     - num_x_tiles (int): Number of tiles in the x direction.
     - num_y_tiles (int): Number of tiles in the y direction.
     """
-    
-    
     win_size = w_size
-    pad_px = win_size // 2
     in_img = np.array(Image.open(image_path))
     
-    # Normalize the image to 0-255
-    if normalize: in_img = ((in_img - in_img.min()) / (in_img.max() - in_img.min()) * 255).astype(np.uint8)
+    # Normalize the image to 0-255 if specified
+    if normalize: 
+        in_img = ((in_img - in_img.min()) / (in_img.max() - in_img.min()) * 255).astype(np.uint8)
     
+    # Calculate the necessary padding to make the image dimensions multiples of the window size
+    img_height, img_width = in_img.shape[:2]
+    pad_y = (win_size - img_height % win_size) % win_size  # Padding for height
+    pad_x = (win_size - img_width % win_size) % win_size   # Padding for width
     
+    # Add black (zero) padding to the right and bottom if necessary
+    padded_img = np.pad(in_img, ((0, pad_y), (0, pad_x), (0, 0)) if len(in_img.shape) == 3 else ((0, pad_y), (0, pad_x)), 'constant', constant_values=0)
+    
+    # Now calculate the step size
     if custom_overlap is not None:
         step = win_size - custom_overlap
     elif overlap:
-        step = pad_px
+        step = win_size // 2  # Default overlap is half the window size
     else:
         step = win_size
 
-    if len(in_img.shape) == 2:
-        img_pad = np.pad(in_img, [(pad_px, pad_px), (pad_px, pad_px)], 'edge')
-        tiles = view_as_windows(img_pad, (win_size, win_size), step=step)
-    else:
-        img_pad = np.pad(in_img, [(pad_px, pad_px), (pad_px, pad_px), (0, 0)], 'edge')
-        tiles = view_as_windows(img_pad, (win_size, win_size, 3), step=step)
-        
+    # Generate tiles using sliding windows
+    if len(padded_img.shape) == 2:  # Grayscale image
+        tiles = view_as_windows(padded_img, (win_size, win_size), step=step)
+    else:  # RGB image
+        tiles = view_as_windows(padded_img, (win_size, win_size, 3), step=step)
+
     # Get the number of tiles in the x and y directions
     num_y_tiles = tiles.shape[0]
     num_x_tiles = tiles.shape[1]
@@ -102,7 +110,7 @@ def generate_tiling(image_path, w_size, overlap=True, custom_overlap=None,normal
     print(f"Number of tiles in y direction: {num_y_tiles}")
     print(f"Number of tiles in x direction: {num_x_tiles}")
 
-
+    # Create a list of tiles
     tiles_lst = []
     for row in range(tiles.shape[0]):
         for col in range(tiles.shape[1]):
@@ -111,4 +119,5 @@ def generate_tiling(image_path, w_size, overlap=True, custom_overlap=None,normal
             else:
                 tt = tiles[row, col, 0, ...].copy()
             tiles_lst.append(tt)
+    
     return tiles_lst, num_x_tiles, num_y_tiles

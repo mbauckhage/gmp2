@@ -11,11 +11,11 @@ from tqdm import tqdm
 # -----------------------------------------------
 run_stitch_geotiffs = True
 
-base_path = "/Volumes/T7 Shield/GMP_Data/old_national/map_sheets/"
+base_path = "/Volumes/T7 Shield/GMP_Data/old_national/map_sheets/" #"/Volumes/T7 Shield/GMP_Data/processed_data/"
 #base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
-folder_paths = [""]
-years = [1975,1987] #   1878, 1899,1904,1912,1930,1939
-lkgs = ["LKg_1165","LKg_1166","LKg_1185","LKg_1186"] #  # "rgb_TA_315","rgb_TA_318","rgb_TA_329","rgb_TA_332"
+folder_paths = ["lake"]
+years = [1956] #   ,1899,1904,1912,1930,1939 1975,1987
+lkgs = ["LKg_1165","LKg_1166","LKg_1185","LKg_1186"] #  #  "rgb_TA_315","rgb_TA_318","rgb_TA_329","rgb_TA_332" 
 additional = "" #"_predictions" #_binary #_black_ms_5_50
 assign_crs_to_files = True
 
@@ -63,7 +63,10 @@ if run_stitch_geotiffs:
             
             
             for file in tiff_files:
-                ensure_file_exists(file)
+                file_exists= ensure_file_exists(file, raise_error=False)
+                if not file_exists:
+                    logging.error(f"File {file} does not exist")
+                    tiff_files.remove(file)
                 
                 
             if assign_crs_to_files:

@@ -313,6 +313,8 @@ def save_channel_as_binary(input_raster, output_dir,output_filename,output_crs='
         # Update the CRS to the desired output CRS
         meta.update(crs=output_crs)
 
+
+        logging.info(f"Raster data shape: {raster_data.shape}")
         # Loop over each channel and save it as a binary raster
         for channel in range(raster_data.shape[0]):
             # Extract the channel (1-based index for channel)
