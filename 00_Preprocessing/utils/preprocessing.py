@@ -18,6 +18,7 @@ from shapely.geometry import Polygon
 from tqdm import tqdm
 import shapefile  # pyshp library
 import pyproj  # For handling CRS
+import pandas as pd
 
 
 # Use relative import for general_functions
@@ -528,18 +529,21 @@ def get_extent_from_tiff(tiff_file):
 
 
 
-
 def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=0.01):
     """
-    Converts a binary raster to GeoJSON with optional EPSG code and polygon simplification.
+    Converts a binary raster to a shapefile with geometries as MultiPolygonZ and optional CRS.
 
     Args:
         raster_path (str): Path to the binary raster file.
-        geojson_path (str): Path to save the GeoJSON file.
+        shapefile_path (str): Path to save the shapefile.
         epsg_code (int, optional): EPSG code to define the CRS for the output.
         tolerance (float): Tolerance for simplification. Larger values simplify more.
     """
-    
+    import rasterio
+    from rasterio.features import shapes
+    from shapely.geometry import shape, MultiPolygon, Polygon
+    import geopandas as gpd
+
     # Step 1: Read the binary raster
     with rasterio.open(raster_path) as src:
         raster_data = src.read(1)  # Read the first band
@@ -558,24 +562,46 @@ def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=
 
             # Simplify the geometry (reduce vertices and smooth edges)
             simplified_polygon = polygon.simplify(tolerance, preserve_topology=True)
-            
-            # Append to geometries list with the correct structure
-            geometries.append({"geometry": simplified_polygon, "properties": {"value": int(value)}})
+
+            # Convert to MultiPolygon if necessary
+            if isinstance(simplified_polygon, Polygon):
+                simplified_polygon = MultiPolygon([simplified_polygon])
+
+            # Convert to MultiPolygonZ (add Z-dimension with a default value of 0.0)
+            multipolygonz = MultiPolygon([
+                Polygon(
+                    # Add Z dimension to exterior coordinates
+                    [(x, y, 0.0) for x, y in poly.exterior.coords],
+                    # Add Z dimension to each interior ring
+                    [[(x, y, 0.0) for x, y in ring.coords] for ring in poly.interiors]
+                )
+                for poly in simplified_polygon.geoms
+            ])
+
+            # Append to geometries list
+            geometries.append({"geometry": multipolygonz, "properties": {"value": int(value)}})
 
     # Step 3: Create GeoDataFrame
-    gdf = gpd.GeoDataFrame.from_features(geometries, crs=raster_crs)
+    gdf = gpd.GeoDataFrame.from_features(geometries)
+
+    # Assign CRS
+    if epsg_code:
+        gdf.set_crs(epsg=epsg_code, inplace=True)
+    elif raster_crs:
+        gdf.set_crs(raster_crs, inplace=True)
+    else:
+        raise ValueError("No CRS information available. Please provide an EPSG code.")
 
     # Save the GeoDataFrame as a shapefile
     gdf.to_file(shapefile_path)
 
     print(f"Shapefile saved at: {shapefile_path}")
-    
-    
-    
-def prepare_shp_for_unity(input_shapefile,output_shapefile=None ):
 
-    if output_shapefile is None: output_shapefile = input_shapefile
-        
+
+def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None):
+    if output_shapefile is None:
+        output_shapefile = input_shapefile
+
     # Validate input file
     if not os.path.exists(input_shapefile):
         raise FileNotFoundError(f"Input shapefile not found: {input_shapefile}")
@@ -583,24 +609,80 @@ def prepare_shp_for_unity(input_shapefile,output_shapefile=None ):
     # Read the input shapefile using GeoPandas
     gdf = gpd.read_file(input_shapefile, engine='fiona')
 
-
-    # Add new columns: 'ID' and 'building'
-    gdf['ID'] = range(1, len(gdf) + 1)  # Assign unique IDs starting from 1
-    gdf['building'] = 'building'  # Set 'building' value to 'building' for all records
+    # Check if the CRS is set correctly. If it's not set, assign the CRS.
+    if gdf.crs is None:
+        print(f"No CRS found. Assigning CRS to EPSG:21781")
+        gdf.set_crs(epsg=21781, allow_override=True, inplace=True)
+    else:
+        print(f"CRS already set")
 
     # Ensure the geometries are Polygons (if needed)
     gdf['geometry'] = gdf['geometry'].apply(lambda geom: geom if isinstance(geom, Polygon) else None)
 
-    # Set CRS (Coordinate Reference System) to EPSG:21781 (Swiss CH1903/LV03)
-    gdf.set_crs(epsg=21781, allow_override=True, inplace=True)
+    # Create a new GeoDataFrame with only the desired columns
+    new_gdf = gpd.GeoDataFrame({
+        'ID': range(1, len(gdf) + 1),  # Assign unique IDs starting from 1
+        'LAYER': layer_params['layer'],
+        'NAME': layer_params['name'],
+        'building': layer_params['building'],
+        'place': layer_params['place'],
+        'leisure': layer_params['leisure'],
+        'geometry': gdf['geometry']  # Retain geometry
+    }, crs=gdf.crs)  # Retain CRS
 
-    # Save the modified GeoDataFrame as a new shapefile
-    gdf.to_file(output_shapefile)
-
-    # Define CRS as EPSG:21781 and write .prj file
-    prj_file = output_shapefile.replace(".shp", ".prj")
-    crs = pyproj.CRS.from_epsg(21781)  # EPSG code for CH1903/LV03
-    with open(prj_file, "w") as prj:
-        prj.write(crs.to_wkt())  # Write the WKT (Well-Known Text) representation of the CRS
+    # Save the modified GeoDataFrame as a new shapefile, which will automatically write the CRS.
+    new_gdf.to_file(output_shapefile)
 
     print(f"Modified shapefile saved to {output_shapefile}")
+
+
+
+def merge_shapefiles(shapefile_list, output_shapefile):
+    """
+    Merges multiple shapefiles into one.
+
+    Parameters:
+        shapefile_list (list): List of input shapefile paths.
+        output_shapefile (str): Path to save the merged shapefile.
+    """
+    # Check if all files exist
+    for shapefile in shapefile_list:
+        if not os.path.exists(shapefile):
+            raise FileNotFoundError(f"Shapefile not found: {shapefile}")
+
+    # Read and merge shapefiles
+    gdfs = []
+    for shapefile in shapefile_list:
+        gdf = gpd.read_file(shapefile)
+        gdfs.append(gdf)
+
+    # Combine all GeoDataFrames
+    merged_gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs=gdfs[0].crs)
+
+    # Save the merged shapefile
+    merged_gdf.to_file(output_shapefile)
+    print(f"Merged shapefile saved to {output_shapefile}")
+
+
+import shutil
+
+def copy_file(source_file, destination_dir):
+    """
+    Copies a file from source to destination directory.
+
+    Parameters:
+        source_file (str): Path to the source file.
+        destination_dir (str): Path to the destination directory.
+    """
+    try:
+        # Perform the copy
+        shutil.copy(source_file, destination_dir)
+        print(f"File copied from {source_file} to {destination_dir}")
+    except FileNotFoundError:
+        print(f"Source file not found: {source_file}")
+    except PermissionError:
+        print(f"Permission denied. Could not copy to: {destination_dir}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
