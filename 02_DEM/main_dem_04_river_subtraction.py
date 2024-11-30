@@ -62,4 +62,7 @@ for year in tqdm(years):
 
 
     convert_tif_to_png(output_raster_path, output_raster_path.replace('.tif', '.png'))
-    make_img_square(output_raster_path.replace(".tif",".png"), output_raster_path.replace('.tif', '_squared.png'))
+    
+    
+    input_img_path, output_img_path= output_raster_path.replace(".tif",".png"), output_raster_path.replace('.tif', '_squared.png')
+    make_img_square(input_img_path, output_img_path,method="min",align="center")

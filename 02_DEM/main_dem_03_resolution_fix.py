@@ -8,14 +8,15 @@ from utils.resolution_resample import resample_geotiff
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/05_DEM/"
 
-
 different_prefixes = ['dem','depth_maps']
+
+add_resultion_suffix = True
 
 for different_prefix in different_prefixes:
 
     input_for_masking = different_prefix
     
-    new_resolution = (1,1)  
+    new_resolution = (5,5)  
 
     years = [1899,1912,1930,1939,1975]
 

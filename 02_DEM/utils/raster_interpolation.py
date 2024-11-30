@@ -69,32 +69,82 @@ def convert_tif_to_png(input_tif_path, output_png_path):
 
 
 
-def make_img_square(input_img_path, output_img_path):
+import numpy as np
+import rasterio
+from rasterio.transform import from_bounds
+
+def make_img_square(input_img_path, output_img_path, method="max", align="center"):
+    """
+    Squares an image by either extending or cropping based on the given method.
+    
+    Parameters:
+    - input_img_path (str): Path to the input image.
+    - output_img_path (str): Path to save the squared output image.
+    - method (str): "max" (pad to the longer side) or "min" (crop to the shorter side).
+    - align (str): Alignment when cropping to the shorter side. Options: "left", "center", "right".
+    """
     with rasterio.open(input_img_path) as src:
         data = src.read(1)  # Read the first band
         height, width = data.shape
 
-        # Determine the size of the square
-        size = max(height, width)
+        if method == "max":
+            # Square based on the longer side
+            size = max(height, width)
+            square_data = np.zeros((size, size), dtype=data.dtype)
 
-        # Create a new array with the square size and fill with zeros
-        square_data = np.zeros((size, size), dtype=data.dtype)
+            # Place the original data in the top-left corner
+            square_data[:height, :width] = data
 
-        # Place the original data in the top-left corner of the square array
-        square_data[:height, :width] = data
+            # Update the metadata
+            meta = src.meta.copy()
+            meta.update({
+                "height": size,
+                "width": size,
+                "transform": from_bounds(
+                    src.bounds.left, src.bounds.bottom, src.bounds.right, src.bounds.top,
+                    size, size
+                )
+            })
 
-        # Update the metadata to reflect the new dimensions
-        meta = src.meta.copy()
-        meta.update({
-            "height": size,
-            "width": size,
-            "transform": rasterio.transform.from_bounds(
-                src.bounds.left, src.bounds.bottom, src.bounds.right, src.bounds.top,
-                size, size
-            )
-        })
+        elif method == "min":
+            # Square based on the shorter side
+            size = min(height, width)
 
-        # Write the square data to a new TIFF file
+            # Determine the crop offsets
+            if align == "left":
+                x_offset, y_offset = 0, 0
+            elif align == "center":
+                x_offset = (width - size) // 2
+                y_offset = (height - size) // 2
+            elif align == "right":
+                x_offset = width - size
+                y_offset = height - size
+            else:
+                raise ValueError("Invalid align value. Choose from 'left', 'center', or 'right'.")
+
+            # Crop the original data
+            square_data = data[y_offset:y_offset + size, x_offset:x_offset + size]
+
+            # Update the metadata
+            meta = src.meta.copy()
+            meta.update({
+                "height": size,
+                "width": size,
+                "transform": from_bounds(
+                    src.bounds.left + x_offset * src.transform.a,  # Adjust left bound
+                    src.bounds.bottom + y_offset * src.transform.e,  # Adjust bottom bound
+                    src.bounds.left + (x_offset + size) * src.transform.a,  # Adjust right bound
+                    src.bounds.bottom + (y_offset + size) * src.transform.e,  # Adjust top bound
+                    size, size
+                )
+            })
+
+        else:
+            raise ValueError("Invalid method value. Choose 'max' or 'min'.")
+
+        # Write the squared data to a new file
         with rasterio.open(output_img_path, 'w', **meta) as dst:
             dst.write(square_data, 1)
+
+    print(f"Squared image saved at: {output_img_path}")
 

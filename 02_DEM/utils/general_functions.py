@@ -47,17 +47,3 @@ def clean_logs(log_directory):
     print('Done moving log files.')
     logging.info('Done moving log files.')
    
-
-def save_tiling_info(num_x_tiles, num_y_tiles, output_png_path):
-    
-    tile_info = {
-        "num_x_tiles": num_x_tiles,
-        "num_y_tiles": num_y_tiles
-    }
-    json_output_path = os.path.join(output_png_path, '_tile_info.json')
-    
-    
-    with open(json_output_path, 'w') as json_file:
-        json.dump(tile_info, json_file)
-
-    logging.info(f"Tile information saved to '{json_output_path}'")
