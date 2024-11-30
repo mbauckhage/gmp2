@@ -4,8 +4,6 @@ from PIL import Image
 from tqdm import tqdm
 
 
-
-
 def read_geotiff_mask(mask_path):
     """
     Reads a binary mask from a GeoTIFF file.
@@ -56,7 +54,7 @@ def apply_mask(image, mask, replacement_image):
     
     return result_image
 
-def fill_masks(binarymasks, quilt_images, output_path):
+def fill_masks(binarymasks, quilt_images, output_path,default_color=(211, 211, 196)):
     """
     Merges the masks (e.g. vegetation, river, lakes,...) with their respective quilt images.
     Saves the resulting image as a new file.
@@ -68,7 +66,9 @@ def fill_masks(binarymasks, quilt_images, output_path):
     # Empty image to start with
     mask1 = read_geotiff_mask(binarymasks[0])
     height, width = mask1.shape
-    final_image = np.zeros((height, width, 3), dtype=np.uint8)
+    
+    # Initialize the final image with the default color (light warm grey)
+    final_image = np.full((height, width, 3), default_color, dtype=np.uint8)
 
 
     for mask, quilt_images in tqdm(zip(binarymasks, quilt_images)):
@@ -93,9 +93,7 @@ def fill_masks(binarymasks, quilt_images, output_path):
     final_image_pil.save(output_path)
     print(f"Final image saved at: {output_path}")
     
-    
-    from PIL import Image
-import numpy as np
+
 
 def make_black_pixels_transparent(input_path, output_path):
     """
