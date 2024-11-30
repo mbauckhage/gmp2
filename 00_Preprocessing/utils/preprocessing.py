@@ -10,9 +10,14 @@ import os
 import logging
 from rasterio.windows import from_bounds
 from rasterio.merge import merge
-
 from rasterio.enums import Resampling
 from rasterio.warp import reproject, calculate_default_transform
+from rasterio.features import shapes
+from shapely.geometry import shape
+from shapely.geometry import Polygon
+from tqdm import tqdm
+import shapefile  # pyshp library
+import pyproj  # For handling CRS
 
 
 # Use relative import for general_functions
@@ -520,3 +525,82 @@ def get_extent_from_tiff(tiff_file):
     clip_extent = (xmin, ymin, xmax, ymax)
     
     return clip_extent
+
+
+
+
+def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=0.01):
+    """
+    Converts a binary raster to GeoJSON with optional EPSG code and polygon simplification.
+
+    Args:
+        raster_path (str): Path to the binary raster file.
+        geojson_path (str): Path to save the GeoJSON file.
+        epsg_code (int, optional): EPSG code to define the CRS for the output.
+        tolerance (float): Tolerance for simplification. Larger values simplify more.
+    """
+    
+    # Step 1: Read the binary raster
+    with rasterio.open(raster_path) as src:
+        raster_data = src.read(1)  # Read the first band
+        transform = src.transform
+        raster_crs = src.crs
+
+    # Step 2: Extract shapes (vectorize)
+    shapes_gen = shapes(raster_data, transform=transform)
+
+    # Prepare the geometries list
+    geometries = []
+
+    for geom, value in shapes_gen:
+        if value:  # Only process regions where value is 1 (binary 'on')
+            polygon = shape(geom)
+
+            # Simplify the geometry (reduce vertices and smooth edges)
+            simplified_polygon = polygon.simplify(tolerance, preserve_topology=True)
+            
+            # Append to geometries list with the correct structure
+            geometries.append({"geometry": simplified_polygon, "properties": {"value": int(value)}})
+
+    # Step 3: Create GeoDataFrame
+    gdf = gpd.GeoDataFrame.from_features(geometries, crs=raster_crs)
+
+    # Save the GeoDataFrame as a shapefile
+    gdf.to_file(shapefile_path)
+
+    print(f"Shapefile saved at: {shapefile_path}")
+    
+    
+    
+def prepare_shp_for_unity(input_shapefile,output_shapefile=None ):
+
+    if output_shapefile is None: output_shapefile = input_shapefile
+        
+    # Validate input file
+    if not os.path.exists(input_shapefile):
+        raise FileNotFoundError(f"Input shapefile not found: {input_shapefile}")
+
+    # Read the input shapefile using GeoPandas
+    gdf = gpd.read_file(input_shapefile, engine='fiona')
+
+
+    # Add new columns: 'ID' and 'building'
+    gdf['ID'] = range(1, len(gdf) + 1)  # Assign unique IDs starting from 1
+    gdf['building'] = 'building'  # Set 'building' value to 'building' for all records
+
+    # Ensure the geometries are Polygons (if needed)
+    gdf['geometry'] = gdf['geometry'].apply(lambda geom: geom if isinstance(geom, Polygon) else None)
+
+    # Set CRS (Coordinate Reference System) to EPSG:21781 (Swiss CH1903/LV03)
+    gdf.set_crs(epsg=21781, allow_override=True, inplace=True)
+
+    # Save the modified GeoDataFrame as a new shapefile
+    gdf.to_file(output_shapefile)
+
+    # Define CRS as EPSG:21781 and write .prj file
+    prj_file = output_shapefile.replace(".shp", ".prj")
+    crs = pyproj.CRS.from_epsg(21781)  # EPSG code for CH1903/LV03
+    with open(prj_file, "w") as prj:
+        prj.write(crs.to_wkt())  # Write the WKT (Well-Known Text) representation of the CRS
+
+    print(f"Modified shapefile saved to {output_shapefile}")

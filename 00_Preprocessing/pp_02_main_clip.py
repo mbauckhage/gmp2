@@ -13,6 +13,7 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 # -----------------------------------------------
 run_clip_geotiff = True
 
+
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/" #"/Volumes/T7 Shield/GMP_Data/processed_data/"
 input_for_clipping = "01_stiched/" #"map_sheets/" #"01_stiched/" #"/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/03_Terrain/swissimage2.5m_latest.tif"
 
