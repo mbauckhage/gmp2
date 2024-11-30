@@ -46,6 +46,7 @@ public class GeoJsonParser2 : MonoBehaviour
                 string geometryType = (string)geometry["type"];
                 if (geometryType == "MultiPolygon")
                 {
+
                     var coordinates = geometry["coordinates"];
                     List<List<List<Vector3>>> multiPolygon = ParseCoordinates(coordinates);
 
