@@ -598,7 +598,7 @@ def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=
     print(f"Shapefile saved at: {shapefile_path}")
 
 
-def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None):
+def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None,print_info=False):
     if output_shapefile is None:
         output_shapefile = input_shapefile
 
@@ -611,33 +611,38 @@ def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None):
 
     # Check if the CRS is set correctly. If it's not set, assign the CRS.
     if gdf.crs is None:
-        print(f"No CRS found. Assigning CRS to EPSG:21781")
+        if print_info: print(f"No CRS found. Assigning CRS to EPSG:21781")
         gdf.set_crs(epsg=21781, allow_override=True, inplace=True)
     else:
-        print(f"CRS already set")
+        if print_info: print(f"CRS already set")
 
     # Ensure the geometries are Polygons (if needed)
     gdf['geometry'] = gdf['geometry'].apply(lambda geom: geom if isinstance(geom, Polygon) else None)
-
+    
+    # Filter out polygons with an area less than the threshold
+    gdf = gdf[gdf['geometry'].area >= layer_params['filter_area']]
+    
     # Create a new GeoDataFrame with only the desired columns
+    layer_attributes = layer_params['attributes']
     new_gdf = gpd.GeoDataFrame({
         'ID': range(1, len(gdf) + 1),  # Assign unique IDs starting from 1
-        'LAYER': layer_params['layer'],
-        'NAME': layer_params['name'],
-        'building': layer_params['building'],
-        'place': layer_params['place'],
-        'leisure': layer_params['leisure'],
+        'LAYER': layer_attributes['layer'],
+        'NAME': layer_attributes['name'],
+        'building': layer_attributes['building'],
+        'place': layer_attributes['place'],
+        'leisure': layer_attributes['leisure'],
+        'grass': layer_attributes['grass'],
         'geometry': gdf['geometry']  # Retain geometry
     }, crs=gdf.crs)  # Retain CRS
 
     # Save the modified GeoDataFrame as a new shapefile, which will automatically write the CRS.
     new_gdf.to_file(output_shapefile)
 
-    print(f"Modified shapefile saved to {output_shapefile}")
+    if print_info: print(f"Modified shapefile saved to {output_shapefile}")
 
 
 
-def merge_shapefiles(shapefile_list, output_shapefile):
+def merge_shapefiles(shapefile_list, output_shapefile, print_info=False):
     """
     Merges multiple shapefiles into one.
 
@@ -658,10 +663,12 @@ def merge_shapefiles(shapefile_list, output_shapefile):
 
     # Combine all GeoDataFrames
     merged_gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs=gdfs[0].crs)
+    
+    merged_gdf['ID'] = range(1, len(merged_gdf) + 1)
 
     # Save the merged shapefile
     merged_gdf.to_file(output_shapefile)
-    print(f"Merged shapefile saved to {output_shapefile}")
+    if print_info: print(f"Merged shapefile saved to {output_shapefile}")
 
 
 import shutil
