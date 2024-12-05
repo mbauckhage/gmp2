@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 [ExecuteInEditMode]
-public class AdjustTerrainAndObjects : MonoBehaviour
+public class AdjustTerrainAndObjects : MonoBehaviour, IScaler
 {
     // List of parent GameObject names (e.g., "1975", "1939", etc.)
     [SerializeField] private List<string> parentObjectNames;
@@ -11,6 +11,13 @@ public class AdjustTerrainAndObjects : MonoBehaviour
     [SerializeField] private float scalingFactor = 1000f;
 
     [ContextMenu("Adjust Terrain and Objects")]
+
+    public void UpdateParameters()
+    {
+        AdjustTerrainAndObjectsInParent();
+
+    }
+
     private void AdjustTerrainAndObjectsInParent()
     {
         if (parentObjectNames == null || parentObjectNames.Count == 0)
@@ -36,7 +43,7 @@ public class AdjustTerrainAndObjects : MonoBehaviour
             AdjustObjectScale(parentObject, "Water");
 
             // Adjust "Buildings" GameObject
-            AdjustObjectScale(parentObject, "Buildings");
+            AdjustObjectScale(parentObject, "buildings");
         }
     }
 
