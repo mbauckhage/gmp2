@@ -5,6 +5,10 @@ import os
 from utils.general_functions import ensure_directory_exists
 from utils.resolution_resample import resample_geotiff
 
+"""
+This script is used to resample the geotiff files to a new resolution.
+"""
+
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/05_DEM/"
 base_path = "/Volumes/T7 Shield/GMP_Data/test/"

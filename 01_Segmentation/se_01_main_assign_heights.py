@@ -1,6 +1,11 @@
 from utils.segmentation import assign_heights
 import os
 
+
+"""
+Use exisitng contour line heights to assign heights to the skeleton.
+"""
+
 # Parameters:
 # ---------------------------------------------
 

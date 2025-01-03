@@ -85,6 +85,46 @@ All the raster files are converted into vector data (Shapefiles), as the Unity P
 This script takes either raster or shapefile and calculates a depth map. The raster input needs to be binary. A max depth needs to be set.
 """
 
+### Segmentation of Contour Lines
+
+#### Extracting Contour Lines from Map
+
+`se_00_main_segmentation.py`
+
+This script is the main script for the segmentation of the maps. Start the script, select the seed point and the script will segment the map and save the skeleton as a geojson file.
+
+#### Assigning heights of Contour Lines based on existing contour lines.
+
+`se_01_main_assign_heights.py`
+
+Use exisitng contour line heights to assign heights to the skeleton.
+
+### Digital Elevation Model (DEM)
+
+#### Geojson to TIFF
+
+`dem_01_main_geojson2tiff.py`
+
+This script is used to convert a geojson file to a tiff file, which later will be used to create the DEM using grid interpolation.
+
+#### Grid Interpolation
+
+`dem_02_main_interpolation.py`
+
+This script interpolates the height map from the skeleton using grid interpolation.
+
+#### Fix resolutions
+
+`dem_03_main_resolution_fix.py`
+
+This script is used to resample the geotiff files to a new resolution, to allow river subtraction in the following step.
+
+#### River subtraction
+
+`dem_04_main_river_subtraction.py`
+
+This script subtracts the depth maps (rivers, lakes, etc.) from the DEMs and saves the result as a new raster file.
+
 ### Unity Preperation
 
 #### Raster and DEM preparation

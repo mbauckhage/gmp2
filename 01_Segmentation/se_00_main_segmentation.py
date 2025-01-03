@@ -7,6 +7,12 @@ from tkinter import messagebox
 from utils.general_functions import *
 
 
+"""
+This script is the main script for the segmentation of the maps.
+Start the script, select the seed point and the script will segment the map and save the skeleton as a geojson file.
+"""
+
+
 # Parameters:
 # ---------------------------------------------
 skeleton_trace_iterations = 500
@@ -14,24 +20,19 @@ years = [1904,1912,1930,1939]
 overwrite = False
 
 
-
-
 # Input paths:
 # ---------------------------------------------
 base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/02_clipped/"
-
-
 
 # Output paths:
 # ---------------------------------------------
 base_path_output = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/"
 base_path_output = "/Volumes/T7 Shield/GMP_Data/processed_data/00_Segmentation/"
 
-
-
-
 # ---------------------------------------------
+
+
 images = []
 seed_points = []
 current_years = []
@@ -39,7 +40,6 @@ skeleton_img_paths = []
 image_file_paths = []
 output_paths_geojson = []
  
-
 
 
 for year in years:

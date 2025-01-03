@@ -7,6 +7,9 @@ import logging
 from datetime import datetime
 
 
+"""
+This script subtracts the depth maps (rivers, lakes, etc.) from the DEMs and saves the result as a new raster file.
+"""
 
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data"

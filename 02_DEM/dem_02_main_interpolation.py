@@ -2,6 +2,12 @@ from utils.raster_interpolation import *
 from utils.general_functions import *
 from tqdm import tqdm
 
+
+
+"""
+This script interpolates the height map from the skeleton
+"""
+
 # File path
 # -----------------------------------------------
 base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/"

@@ -4,6 +4,12 @@ import logging
 from datetime import datetime
 from utils.general_functions import ensure_directory_exists, clean_logs
 
+"""
+This script is used to convert a geojson file to a tiff file, which later will be used to create the DEM using grid interpolation.
+"""
+
+
+
 # Define paths and parameters
 # -----------------------------------------------
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/00_Segmentation/"
