@@ -125,6 +125,26 @@ This script is used to resample the geotiff files to a new resolution, to allow 
 
 This script subtracts the depth maps (rivers, lakes, etc.) from the DEMs and saves the result as a new raster file.
 
+### Texture
+
+#### Quill images
+
+`tex_01_main_texture_synthesis.py`
+
+This script is used to quill a texture image to a desired size based on the reference image.
+
+#### Create Terrain Textures
+
+`tex_02_main_create_textures.py`
+
+This script is used to create the textures for the quilt images using vector annoations.
+
+#### Georeference Textures
+
+`tex_03_main_georeference_textures.py`
+
+This script georeferences all PNG files in the input directory using the corner coordinates and CRS from a reference GeoTIFF.
+
 ### Unity Preperation
 
 #### Raster and DEM preparation

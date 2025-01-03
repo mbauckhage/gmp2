@@ -9,7 +9,15 @@ import argparse
 from tqdm import tqdm
 import os
 
-# from: https://github.com/Devashi-Choudhary/Texture-Synthesis
+
+
+"""
+from: https://github.com/Devashi-Choudhary/Texture-Synthesis
+
+This script is used to quill a texture image to a desired size based on the reference image.
+"""
+
+
 
 
 image_path = "/Volumes/T7 Shield/GMP_Data/processed_data/references/road_1.jpeg"

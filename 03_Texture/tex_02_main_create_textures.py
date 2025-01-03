@@ -1,6 +1,11 @@
 from utils.texture_fill import fill_masks, make_black_pixels_transparent
 from utils.raster_functions import make_img_square
 
+"""
+This script is used to create the textures for the quilt images using vector annoations.
+
+"""
+
 
 # Define the paths to the binary masks and quilt images
 # -------------------------------------------------------
