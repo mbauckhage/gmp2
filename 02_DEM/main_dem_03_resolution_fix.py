@@ -7,8 +7,10 @@ from utils.resolution_resample import resample_geotiff
 
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/05_DEM/"
+base_path = "/Volumes/T7 Shield/GMP_Data/test/"
 
 different_prefixes = ['dem','depth_maps']
+different_prefixes = ['']
 
 add_resultion_suffix = True
 

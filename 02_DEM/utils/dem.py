@@ -489,15 +489,21 @@ import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.windows import from_bounds
 import logging
+import numpy as np
+import rasterio
+from rasterio.warp import reproject, Resampling
+from rasterio.windows import from_bounds
+import logging
 
-def subtract_rasters_based_on_coordinates(dem_path, river_depth_paths, output_path):
+def subtract_rasters_based_on_coordinates(dem_path, river_depth_paths, output_path, additional_distance=0):
     """
     Subtracts multiple river depth maps from a DEM, aligning them by their coordinates.
-    If necessary, resamples the river depth maps to the DEM grid before subtraction.
+    Optionally subtracts an additional distance at every pixel with non-zero river depth values.
     
     :param dem_path: Path to the DEM GeoTIFF.
     :param river_depth_paths: List of paths to the river depth GeoTIFFs.
     :param output_path: Path to save the resulting GeoTIFF after subtraction.
+    :param additional_distance: Distance (in meters) to subtract additionally from non-zero river depth pixels.
     """
     
     # Open the DEM file
@@ -550,9 +556,14 @@ def subtract_rasters_based_on_coordinates(dem_path, river_depth_paths, output_pa
             dem_cropped = dem_cropped[:min_rows, :min_cols]
             river_depth_cropped = river_depth_cropped[:min_rows, :min_cols]
             
-            # Subtract the river depth from the DEM within the window
+            # Subtract the river depth and additional distance from the DEM within the window
+            additional_mask = (river_depth_cropped != 0)  # Identify non-zero pixels
+            subtraction = river_depth_cropped + (additional_distance * additional_mask)
+            dem_cropped -= subtraction
+            
+            # Update the DEM data within the cropped region
             dem_data[window.toslices()] = np.pad(
-                dem_cropped - river_depth_cropped,
+                dem_cropped,
                 ((0, dem_cropped.shape[0] - min_rows), (0, dem_cropped.shape[1] - min_cols)),
                 mode='constant',
                 constant_values=0
@@ -568,4 +579,3 @@ def subtract_rasters_based_on_coordinates(dem_path, river_depth_paths, output_pa
         dst.write(dem_data, 1)
 
     logging.info(f"Processed DEM saved at: {output_path}")
-

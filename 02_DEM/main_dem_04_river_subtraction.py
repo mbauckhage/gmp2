@@ -9,7 +9,10 @@ from datetime import datetime
 
 
 
-base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
+base_path = "/Volumes/T7 Shield/GMP_Data/processed_data"
+
+additional_distance = 0
+additional_distance = 10
 
 
 years = [1899,1912,1930,1939,1975]
@@ -58,7 +61,8 @@ for year in tqdm(years):
     output_dir = f"{base_path}/05_DEM/dem_with_hydrology/"
     ensure_directory_exists(output_dir)
     output_raster_path = f"{output_dir}dem_{year}.tif"
-    subtract_rasters_based_on_coordinates(path_dem,depth_map_paths,output_raster_path)
+    output_raster_path = f"{output_dir}TEST_dem_{year}.tif"
+    subtract_rasters_based_on_coordinates(path_dem,depth_map_paths,output_raster_path, additional_distance=additional_distance)
 
 
     convert_tif_to_png(output_raster_path, output_raster_path.replace('.tif', '.png'))
