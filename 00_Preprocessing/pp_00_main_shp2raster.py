@@ -6,6 +6,10 @@ from datetime import datetime
 from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 from tqdm import tqdm
 
+"""
+This script is used to convert shapefiles to rasters.
+"""
+
 
 
 # polygons to raster

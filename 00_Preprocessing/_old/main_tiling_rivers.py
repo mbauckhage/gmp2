@@ -6,6 +6,13 @@ from utils.general_functions import ensure_directory_exists, clean_logs
 from utils.river_tiling import *
 import json
 
+
+"""
+DEPRECTAED
+This script is used to create tiles from the annotated river images.
+"""
+
+
 # Define paths and parameters
 # -----------------------------------------------
 

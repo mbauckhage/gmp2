@@ -15,15 +15,15 @@ from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 create_river_depth_raster = True
 based_on_shapefile = False
 overwrite = True
-max_depth = 4 # stream = 1m, river = 4m, lake = 20m, hydrology = 3m
+max_depth = 1 # stream = 1m, river = 4m, lake = 20m, hydrology = 3m
 
-annotations = ["river"] #"hydrology",
+annotations = ["stream"] #"hydrology",
 
 
 base_path = "/Volumes/T7 Shield/GMP_Data/"
 folder_path = "processed_data/03_resampled/"
 
-#output_dir = f"{base_path}processed_data/05_DEM/depth_maps/"
+output_dir = f"{base_path}processed_data/05_DEM/depth_maps/"
 
 output_dir = f"{base_path}test/"
 ensure_directory_exists(output_dir)

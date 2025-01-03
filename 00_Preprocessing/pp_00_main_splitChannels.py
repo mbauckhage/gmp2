@@ -6,6 +6,11 @@ from datetime import datetime
 from utils.preprocessing import clip_geotiff,get_extent_from_tiff
 
 
+"""
+This script is used to split the channels of a tiff file into binary rasters.
+"""
+
+
 
 
 # Split channels of tiff file into binary rasters
