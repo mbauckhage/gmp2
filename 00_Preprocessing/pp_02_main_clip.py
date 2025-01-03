@@ -47,7 +47,7 @@ if run_clip_geotiff:
     ensure_directory_exists(output_dir)
     
     if isinstance(extent, str):
-                extent = get_extent_from_tiff(extent)
+        extent = get_extent_from_tiff(extent)
     
     for file in os.listdir(base_path + input_for_clipping):
         if file.endswith(".tif") and not file.startswith("._"):

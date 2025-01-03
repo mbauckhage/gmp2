@@ -4,10 +4,11 @@ from utils.preprocessing import *
 epsg_code=21781
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
-input_for_conversion = "02_clipped/"
+input_filled_holes = "03_filled_holes/"
+input_clipped = "02_clipped/"
 
-"""
-annotations = {
+
+"""annotations = {
     "buildings": {
         'tolerance': 2
     },
@@ -23,37 +24,40 @@ annotations = {
 }"""
 
 annotations = {
-    "vegetation": {
-        'tolerance': 5
-    }
+    "roads": {
+        'tolerance': 0.5
+    },
 }
 
 
-input_folder = os.path.join(base_path, input_for_conversion)
+
 output_folder = os.path.join(base_path, "03_vector_data/")
 ensure_directory_exists(output_folder)
 
-for filename in tqdm(os.listdir(input_folder)):
+filled_holes_folder = os.path.join(base_path, input_filled_holes)
+clipped_folder = os.path.join(base_path, input_clipped)
+
+for filename in tqdm(os.listdir(clipped_folder)):  # Use the clipped folder as the main file list
     if filename.endswith(".tif") and not filename.startswith("._"):
         
+        # Check if the file is available in `03_filled_holes`
+        filled_holes_path = os.path.join(filled_holes_folder, filename)
+        clipped_path = os.path.join(clipped_folder, filename)
         
-        input_geotiff = os.path.join(input_folder, filename)
+        # Select the input file (prioritize filled holes)
+        input_geotiff = filled_holes_path if os.path.exists(filled_holes_path) else clipped_path
         
-        new_file_name = filename.replace("_clipped","").replace(".tif",".shp").replace("stiched_","")
+        new_file_name = filename.replace("_clipped", "").replace(".tif", ".shp").replace("stiched_", "")
         annotation = new_file_name.split("_")[0]
         
-        if annotation not in annotations.keys(): continue
+        if annotation not in annotations.keys(): 
+            continue
         
-        ensure_directory_exists(os.path.join(output_folder,annotation),print_info=False)
+        ensure_directory_exists(os.path.join(output_folder, annotation), print_info=False)
         
-        output_shapefile_path = output_folder + annotation + "/" + new_file_name
+        output_shapefile_path = os.path.join(output_folder, annotation, new_file_name)
         
         tolerance = annotations[annotation]['tolerance']
 
-        binary_raster_to_shp(input_geotiff,output_shapefile_path, epsg_code, tolerance)
-
-
-
-
-
-
+        # Call the binary raster to shapefile function
+        binary_raster_to_shp(input_geotiff, output_shapefile_path, epsg_code, tolerance)

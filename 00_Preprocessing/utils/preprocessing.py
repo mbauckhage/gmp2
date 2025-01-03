@@ -162,6 +162,7 @@ def depth_raster(input_raster, output_raster, max_depth=2):
     # Read the raster from the GeoTIFF file
     with rasterio.open(input_raster) as src:
         raster = src.read(1)
+        assert src.crs is not None, "CRS is missing"
 
     logging.info("Calculate distance to edge")
     # Calculate Euclidean distance to the nearest edge of the river polygons
@@ -562,10 +563,20 @@ def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=
 
             # Simplify the geometry (reduce vertices and smooth edges)
             simplified_polygon = polygon.simplify(tolerance, preserve_topology=True)
+            
+             # Remove holes (interior rings)
+            if isinstance(simplified_polygon, Polygon):
+                simplified_polygon = Polygon(simplified_polygon.exterior)
+            elif isinstance(simplified_polygon, MultiPolygon):
+                simplified_polygon = MultiPolygon([
+                    Polygon(poly.exterior) for poly in simplified_polygon.geoms
+                ])
 
             # Convert to MultiPolygon if necessary
             if isinstance(simplified_polygon, Polygon):
                 simplified_polygon = MultiPolygon([simplified_polygon])
+                
+                
 
             # Convert to MultiPolygonZ (add Z-dimension with a default value of 0.0)
             multipolygonz = MultiPolygon([
@@ -629,8 +640,8 @@ def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None,p
         'LAYER': layer_attributes['layer'],
         'NAME': layer_attributes['name'],
         'building': layer_attributes['building'],
-        'place': layer_attributes['place'],
-        'leisure': layer_attributes['leisure'],
+        'waterway': layer_attributes['waterway'],
+        'natural': layer_attributes['natural'],
         'grass': layer_attributes['grass'],
         'geometry': gdf['geometry']  # Retain geometry
     }, crs=gdf.crs)  # Retain CRS

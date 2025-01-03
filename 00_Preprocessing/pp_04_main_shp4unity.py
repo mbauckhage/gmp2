@@ -13,8 +13,8 @@ layer_params_building = {
     'attributes': {
         'name': 'Building',
         'building': 'building',
-        'place': '',
-        'leisure': '',
+        'waterway': '',
+        'natural': '',
         'grass': '',
         'layer': 'Unknown Area Type',
     },
@@ -26,8 +26,8 @@ layer_params_water = {
         {
         'name': 'Water',
         'building': '',
-        'place': 'waterway',
-        'leisure': '',
+        'waterway': 'waterway',
+        'natural': '',
         'grass': '',
         'layer': 'Unknown Area Type'
         },
@@ -40,8 +40,8 @@ layer_params_forest = {
         {
             'name': 'Forest',
             'building': '',
-            'place': '',
-            'leisure': 'forest',
+            'waterway': '',
+            'natural': 'forest',
             'grass': '',
             'layer': 'Unknown Area Type'
         },
@@ -54,8 +54,8 @@ layer_params_grass = {
         {
             'name': 'Grass',
             'building': '',
-            'place': '',
-            'leisure': '',
+            'waterway': '',
+            'natural': '',
             'grass': 'common',
             'layer': 'Unknown Area Type'
         },
