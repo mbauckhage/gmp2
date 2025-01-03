@@ -609,98 +609,93 @@ def binary_raster_to_shp(raster_path, shapefile_path, epsg_code=None, tolerance=
     print(f"Shapefile saved at: {shapefile_path}")
 
 
-def prepare_shp_for_unity(input_shapefile, layer_params, output_shapefile=None,print_info=False):
-    if output_shapefile is None:
-        output_shapefile = input_shapefile
-
-    # Validate input file
-    if not os.path.exists(input_shapefile):
-        raise FileNotFoundError(f"Input shapefile not found: {input_shapefile}")
-
-    # Read the input shapefile using GeoPandas
-    gdf = gpd.read_file(input_shapefile, engine='fiona')
-
-    # Check if the CRS is set correctly. If it's not set, assign the CRS.
-    if gdf.crs is None:
-        if print_info: print(f"No CRS found. Assigning CRS to EPSG:21781")
-        gdf.set_crs(epsg=21781, allow_override=True, inplace=True)
-    else:
-        if print_info: print(f"CRS already set")
-
-    # Ensure the geometries are Polygons (if needed)
-    gdf['geometry'] = gdf['geometry'].apply(lambda geom: geom if isinstance(geom, Polygon) else None)
-    
-    # Filter out polygons with an area less than the threshold
-    gdf = gdf[gdf['geometry'].area >= layer_params['filter_area']]
-    
-    # Create a new GeoDataFrame with only the desired columns
-    layer_attributes = layer_params['attributes']
-    new_gdf = gpd.GeoDataFrame({
-        'ID': range(1, len(gdf) + 1),  # Assign unique IDs starting from 1
-        'LAYER': layer_attributes['layer'],
-        'NAME': layer_attributes['name'],
-        'building': layer_attributes['building'],
-        'waterway': layer_attributes['waterway'],
-        'natural': layer_attributes['natural'],
-        'grass': layer_attributes['grass'],
-        'geometry': gdf['geometry']  # Retain geometry
-    }, crs=gdf.crs)  # Retain CRS
-
-    # Save the modified GeoDataFrame as a new shapefile, which will automatically write the CRS.
-    new_gdf.to_file(output_shapefile)
-
-    if print_info: print(f"Modified shapefile saved to {output_shapefile}")
 
 
 
-def merge_shapefiles(shapefile_list, output_shapefile, print_info=False):
+
+
+
+def resample_geotiff(input_path, output_path, target_resolution):
     """
-    Merges multiple shapefiles into one.
-
+    Reads a GeoTIFF, changes its resolution, and saves it to a new file.
+    
     Parameters:
-        shapefile_list (list): List of input shapefile paths.
-        output_shapefile (str): Path to save the merged shapefile.
+    - input_path (str): Path to the input GeoTIFF.
+    - output_path (str): Path to save the resampled GeoTIFF.
+    - target_resolution (tuple): Desired resolution in the form (new_pixel_size_x, new_pixel_size_y).
     """
-    # Check if all files exist
-    for shapefile in shapefile_list:
-        if not os.path.exists(shapefile):
-            raise FileNotFoundError(f"Shapefile not found: {shapefile}")
+    with rasterio.open(input_path) as src:
+        # Calculate new transform and dimensions based on target resolution
+        new_transform, width, height = calculate_default_transform(
+            src.crs, src.crs, src.width, src.height, 
+            *src.bounds, 
+            resolution=target_resolution
+        )
 
-    # Read and merge shapefiles
-    gdfs = []
-    for shapefile in shapefile_list:
-        gdf = gpd.read_file(shapefile)
-        gdfs.append(gdf)
+        # Define new profile with updated width, height, and transform
+        new_profile = src.profile
+        new_profile.update({
+            'transform': new_transform,
+            'width': width,
+            'height': height
+        })
 
-    # Combine all GeoDataFrames
-    merged_gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True), crs=gdfs[0].crs)
+        # Create the destination file with the new profile
+        with rasterio.open(output_path, 'w', **new_profile) as dst:
+            for i in range(1, src.count + 1):
+                # Resample each band
+                reproject(
+                    source=rasterio.band(src, i),
+                    destination=rasterio.band(dst, i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=new_transform,
+                    dst_crs=src.crs,
+                    resampling=Resampling.bilinear
+                )
     
-    merged_gdf['ID'] = range(1, len(merged_gdf) + 1)
+    print(f"Resampled GeoTIFF saved at: {output_path}")
 
-    # Save the merged shapefile
-    merged_gdf.to_file(output_shapefile)
-    if print_info: print(f"Merged shapefile saved to {output_shapefile}")
-
-
-import shutil
-
-def copy_file(source_file, destination_dir):
+import numpy as np
+import rasterio
+from rasterio.enums import Resampling
+from rasterio.warp import calculate_default_transform, reproject
+from scipy.ndimage import binary_fill_holes, binary_dilation, binary_erosion
+from rasterio.features import shapes
+from rasterio.transform import Affine
+    
+    
+def fill_and_connect_surfaces(input_tiff_path, output_tiff_path, dilation_iterations=3, erosion_iterations=2):
     """
-    Copies a file from source to destination directory.
-
-    Parameters:
-        source_file (str): Path to the source file.
-        destination_dir (str): Path to the destination directory.
+    Reads a GeoTIFF file, connects close surfaces using dilation, fills holes, and writes the result to a new GeoTIFF.
+    
+    Args:
+        input_tiff_path (str): Path to the input GeoTIFF file.
+        output_tiff_path (str): Path to save the output GeoTIFF file.
+        dilation_iterations (int): Number of iterations for morphological dilation.
+        erosion_iterations (int): Number of iterations for morphological erosion (optional).
     """
-    try:
-        # Perform the copy
-        shutil.copy(source_file, destination_dir)
-        print(f"File copied from {source_file} to {destination_dir}")
-    except FileNotFoundError:
-        print(f"Source file not found: {source_file}")
-    except PermissionError:
-        print(f"Permission denied. Could not copy to: {destination_dir}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # Step 1: Read the input GeoTIFF
+    with rasterio.open(input_tiff_path) as src:
+        data = src.read(1)  # Read the first band
+        meta = src.meta.copy()  # Copy metadata
+        transform = src.transform  # GeoTransform
+    
+    # Step 2: Binarize the raster (assumes binary or threshold data)
+    binary_data = (data > 0).astype(np.uint8)
+    
+    # Step 3: Connect close surfaces using dilation
+    dilated_data = binary_dilation(binary_data, iterations=dilation_iterations).astype(np.uint8)
+    
+    # Step 4: Fill holes using binary_fill_holes
+    filled_data = binary_fill_holes(dilated_data).astype(np.uint8)
+    
+    # Step 5 (Optional): Restore size using erosion
+    final_data = binary_erosion(filled_data, iterations=erosion_iterations).astype(np.uint8)
+    
+    # Step 6: Write the output GeoTIFF
+    meta.update(dtype=rasterio.uint8)  # Update metadata to uint8
+    with rasterio.open(output_tiff_path, 'w', **meta) as dst:
+        dst.write(final_data, 1)  # Write the processed raster to the first band
 
-
+    print(f"Processed GeoTIFF written to: {output_tiff_path}")

@@ -1,10 +1,21 @@
-from utils.preprocessing import *
+from utils.general_functions import *
+from utils.unity_prep_utils import *
 import json
+from tqdm import tqdm
+
+
+"""
+Vector Data preparation for Unity Package `GIS Terrain Loader Pro`
+"""
+
+# Define paths and parameters
+# -----------------------------------------------
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
 input_dir = "03_vector_data/"
-
 output_dir = "04_data_for_unity/"
+
+# -----------------------------------------------
 
 
 

@@ -1,12 +1,20 @@
 from tqdm import tqdm
 import os
-from utils.preprocessing import *
+from utils.general_functions import *
+from utils.unity_prep_utils import *
+
+"""
+This script is used to prepare the textures and DEM for the Unity application to fit the input of the `GIS Terrain Loader Pro`.
+"""
 
 
+# Define paths and parameters
+# -----------------------------------------------
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
 input_dir_dem = "05_DEM/dem_with_hydrology/"
 input_dir_textures = "04_Textures/"
 output_dir = "04_data_for_unity/"
+# -----------------------------------------------
 
 
 for input_dir in [input_dir_dem, input_dir_textures]:

@@ -1,14 +1,25 @@
 from tqdm import tqdm
 from utils.preprocessing import *
 
+
+"""
+This file is used to convert the binary raster files to shapefiles. 
+If file exists in the `03_filled_holes` folder, it will be used.
+Otherwise, the file in the `02_clipped` folder will be used. 
+The output will be saved in the `03_vector_data` folder.
+"""
+
+# Define paths and parameters
+# -----------------------------------------------
+
 epsg_code=21781
 
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
 input_filled_holes = "03_filled_holes/"
 input_clipped = "02_clipped/"
+output_dir = "03_vector_data/"
 
-
-"""annotations = {
+annotations = {
     "buildings": {
         'tolerance': 2
     },
@@ -21,17 +32,16 @@ input_clipped = "02_clipped/"
     "vegetation": {
         'tolerance': 5
     },
-}"""
-
-annotations = {
-    "roads": {
+     "roads": {
         'tolerance': 0.5
     },
 }
 
+# -----------------------------------------------
 
 
-output_folder = os.path.join(base_path, "03_vector_data/")
+
+output_folder = os.path.join(base_path, output_dir)
 ensure_directory_exists(output_folder)
 
 filled_holes_folder = os.path.join(base_path, input_filled_holes)
