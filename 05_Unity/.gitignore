@@ -71,9 +71,6 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# Exclude all files in the Assets folder except for the Scripts folder
-/Aassets/*
-!/Assets/Scripts/
 
-# Exclude specific asset files
-*.asset
+05_Unity/VR_Temporal_Landscapes/Assets/GIS Tech/
+05_Unity/VR_Temporal_Landscapes/Assets/GIS Tech/GIS Terrain Loader
