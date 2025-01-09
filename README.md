@@ -174,6 +174,11 @@ Vector Data preparation for Unity Package `GIS Terrain Loader Pro`
 
 ---
 
+The Unity projects can be found here:
+
+- Polybox: https://polybox.ethz.ch/index.php/s/Zr8UezxVByHvhQa
+- OneDrive: https://ethz-my.sharepoint.com/:f:/g/personal/mbauckhage_ethz_ch/ErypriPB8XpIpHs0JmpUboIBeXvEmogGqFdKdDurrJd89A?e=aGiBdY
+
 The project `Landscape_Builder` was used to create the temporal landscapes in full-scale and small-scale.
 
 The scripts used are located inside the asset folder: `/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/05_Unity/Landscape_Builder/Assets/Scripts`

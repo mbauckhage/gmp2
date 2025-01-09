@@ -15,6 +15,7 @@
 00_Backups/
 **/output/
 *.log
+_old/
 
 test.*
 
