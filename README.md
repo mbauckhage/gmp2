@@ -4,13 +4,16 @@
 
 The objective of this project is to develop a virtual reality platform that enables users to journey through time and witness the evolution of river landscapes with immersive experiences. A workflow is to be created and implemented, which shows the process to get from a historical topographic map to a 3D modelled landscape in a VR environment. The workflow should be reproducible and allow to be used for different area of interest and with different historic maps.
 
-The following steps will be implemented:
+The following steps will are implemented:
 
 - 00_Preprocessing: Preparing all data for further processing steps
 - 01_Segmentation: Contour lines image segmentation
 - 02_DEM: Creating a DEM based on the extracted contour lines
 - 03_Texture: Creating textures based on vector annotaions and texture samples
 - 04_Unity_Preperation: prepare data for GIS Terrain Loader Pro in Unity
+- 05_Unity: Unity projects for the creation of the landscape and the build of the VR applicaiton
+
+---
 
 ### 00 Preprocessing
 
@@ -79,14 +82,13 @@ This script resamples GeoTIFF files by changing their resolution and saves the r
 
 All the raster files are converted into vector data (Shapefiles), as the Unity Package `GIS Terrain Loader Pro` takes Shapefiles as input.
 
-"""
-
 #### Depth Maps for Raster Images and Shapefiles
 
-`main_depthMap.py`
+`pp_04_main_depthMap.py`
 
 This script takes either raster or shapefile and calculates a depth map. The raster input needs to be binary. A max depth needs to be set.
-"""
+
+---
 
 ### 01 Segmentation of Contour Lines
 
@@ -101,6 +103,8 @@ This script is the main script for the segmentation of the maps. Start the scrip
 `se_01_main_assign_heights.py`
 
 Use exisitng contour line heights to assign heights to the skeleton.
+
+---
 
 ### 02 Digital Elevation Model (DEM)
 
@@ -128,6 +132,8 @@ This script is used to resample the geotiff files to a new resolution, to allow 
 
 This script subtracts the depth maps (rivers, lakes, etc.) from the DEMs and saves the result as a new raster file.
 
+---
+
 ### 03 Texture
 
 #### Quill images
@@ -150,6 +156,8 @@ This script georeferences all PNG files in the input directory using the corner 
 
 ### 04 Unity Preperation
 
+---
+
 #### Raster and DEM preparation
 
 `pp_05_main_data4unity.py`
@@ -161,3 +169,33 @@ This script is used to prepare the textures and DEM for the Unity application to
 Vector Data preparation for Unity Package `GIS Terrain Loader Pro`
 
 `pp_05_main_shp4unity.py`
+
+### 05 Unity
+
+---
+
+The project `Landscape_Builder` was used to create the temporal landscapes in full-scale and small-scale.
+
+The scripts used are located inside the asset folder: `/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/05_Unity/Landscape_Builder/Assets/Scripts`
+
+The project `VR_Temporal_Landscapes` contains the final VR application.
+
+#### TerrainCreation
+
+The following scripts are used to scale the terrain and its objects:
+
+- `ScalerManager.cs`
+- `IScaler.cs`
+- `WaterScaler.cs`
+- `AdjustTerrainResolution.cs`
+
+The following script is used to create the assign the water texture to a mesh:
+
+- `AssignMeshesToWaterSurface.cs`
+
+#### VR_Interaction
+
+These scripts are used in runtime for the VR application:
+
+- `SceneLoader.cs`
+- `TerrainCycler.cs`
