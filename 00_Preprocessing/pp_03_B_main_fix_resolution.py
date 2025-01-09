@@ -2,7 +2,7 @@ import rasterio
 from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject
 import os
-from utils.preprocessing import ensure_directory_exists, resample_geotiff
+from utils.preprocessing import ensure_directory_exists, resolution_resample
 
 
 # Define paths and parameters
@@ -23,7 +23,7 @@ for filename in os.listdir(input_folder):
     if filename.endswith(".tif") and not filename.startswith("._"):
         input_geotiff = os.path.join(input_folder, filename)
         output_geotiff = os.path.join(output_folder, filename)
-        resample_geotiff(input_geotiff, output_geotiff, new_resolution)
+        resolution_resample(input_geotiff, output_geotiff, new_resolution)
 
 
 

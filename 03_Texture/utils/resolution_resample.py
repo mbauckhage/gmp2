@@ -5,7 +5,7 @@ import os
 
 
 
-def resample_geotiff(input_path, output_path, target_resolution):
+def resolution_resample(input_path, output_path, target_resolution):
     """
     Reads a GeoTIFF, changes its resolution, and saves it to a new file.
     

@@ -6,10 +6,13 @@ The objective of this project is to develop a virtual reality platform that enab
 
 The following steps will be implemented:
 
-1. Contour lines image segmentation (_01_Segmentation_)
-2. ...
+- 00_Preprocessing: Preparing all data for further processing steps
+- 01_Segmentation: Contour lines image segmentation
+- 02_DEM: Creating a DEM based on the extracted contour lines
+- 03_Texture: Creating textures based on vector annotaions and texture samples
+- 04_Unity_Preperation: prepare data for GIS Terrain Loader Pro in Unity
 
-### Preprocessing
+### 00 Preprocessing
 
 #### Rasterize Shape Files
 
@@ -85,7 +88,7 @@ All the raster files are converted into vector data (Shapefiles), as the Unity P
 This script takes either raster or shapefile and calculates a depth map. The raster input needs to be binary. A max depth needs to be set.
 """
 
-### Segmentation of Contour Lines
+### 01 Segmentation of Contour Lines
 
 #### Extracting Contour Lines from Map
 
@@ -99,7 +102,7 @@ This script is the main script for the segmentation of the maps. Start the scrip
 
 Use exisitng contour line heights to assign heights to the skeleton.
 
-### Digital Elevation Model (DEM)
+### 02 Digital Elevation Model (DEM)
 
 #### Geojson to TIFF
 
@@ -125,7 +128,7 @@ This script is used to resample the geotiff files to a new resolution, to allow 
 
 This script subtracts the depth maps (rivers, lakes, etc.) from the DEMs and saves the result as a new raster file.
 
-### Texture
+### 03 Texture
 
 #### Quill images
 
@@ -145,7 +148,7 @@ This script is used to create the textures for the quilt images using vector ann
 
 This script georeferences all PNG files in the input directory using the corner coordinates and CRS from a reference GeoTIFF.
 
-### Unity Preperation
+### 04 Unity Preperation
 
 #### Raster and DEM preparation
 

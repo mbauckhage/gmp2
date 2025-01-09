@@ -17,6 +17,7 @@ Start the script, select the seed point and the script will segment the map and 
 # ---------------------------------------------
 skeleton_trace_iterations = 500
 years = [1904,1912,1930,1939]
+years = [2024]
 overwrite = False
 
 
@@ -24,11 +25,13 @@ overwrite = False
 # ---------------------------------------------
 base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/"
 base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/02_clipped/"
+base_path = "/Volumes/T7 Shield/GMP2/Report_Documentation/"
 
 # Output paths:
 # ---------------------------------------------
 base_path_output = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/"
 base_path_output = "/Volumes/T7 Shield/GMP_Data/processed_data/00_Segmentation/"
+base_path = "/Volumes/T7 Shield/GMP2/Report_Documentation/"
 
 # ---------------------------------------------
 

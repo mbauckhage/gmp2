@@ -3,7 +3,7 @@ from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject
 import os
 from utils.general_functions import ensure_directory_exists
-from utils.resolution_resample import resample_geotiff
+from utils.resolution_resample import resolution_resample
 
 """
 This script is used to resample the geotiff files to a new resolution.
@@ -42,4 +42,4 @@ for different_prefix in different_prefixes:
             if filename.endswith(".tif") and not filename.startswith("._"):
                 input_geotiff = os.path.join(input_folder, filename)
                 output_geotiff = os.path.join(output_folder, filename)
-                resample_geotiff(input_geotiff, output_geotiff, new_resolution, target_crs='EPSG:21781')
+                resolution_resample(input_geotiff, output_geotiff, new_resolution, target_crs='EPSG:21781')
