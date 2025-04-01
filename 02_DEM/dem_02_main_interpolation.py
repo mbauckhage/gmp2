@@ -11,14 +11,14 @@ This script interpolates the height map from the skeleton
 # File path
 # -----------------------------------------------
 base_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/"
-base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/"
+base_path = "/Volumes/T7 Shield/GMP2/00_Data/processed_data/"
 
 input_dir = '00_Segmentation/'
 output_dir = '05_DEM/dem/'
 
 
 
-years = [1912] # 1899,1912,1930,1939,1975
+years = [1899] # 1899,1912,1930,1939,1975
 
 
 

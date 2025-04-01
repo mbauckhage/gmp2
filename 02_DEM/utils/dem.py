@@ -29,9 +29,19 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
     min_height, max_height = get_min_max_height_from_geojson(gdf, height_attribute)
     logging.info(f"Min height: {min_height}, Max height: {max_height}")
     
+    unique_heights, counts = np.unique(gdf[height_attribute], return_counts=True)
+    for height, count in zip(unique_heights, counts):
+        print(f"Height: {height}, Count: {count}")
+    
     # Normalize height values between 0 and 255
-    gdf[height_attribute] = (((gdf[height_attribute] - min_height) / (max_height - min_height)) * 255).astype(np.uint8)
-
+    #gdf[height_attribute] = (((gdf[height_attribute] - min_height) / (max_height - min_height)) * 255).astype(np.uint8)
+    # Subtract min_height from all heights > 0
+    #gdf[height_attribute] = gdf[height_attribute].apply(lambda x: x - min_height if x > 0 else x)
+    
+    # Calculate unique height values and their counts
+    unique_heights, counts = np.unique(gdf[height_attribute], return_counts=True)
+    for height, count in zip(unique_heights, counts):
+        print(f"Height: {height}, Count: {count}")
     
     # Select only the 'height' attribute and the geometry
     gdf = gdf[[height_attribute, 'geometry']]
@@ -58,8 +68,8 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
     transform = rasterio.transform.from_bounds(minx, miny, maxx, maxy, width, height)
 
     # Create an empty array to store the raster data
-    raster = np.zeros((height, width), dtype=rasterio.uint8)
-
+    #raster = np.zeros((height, width), dtype=rasterio.uint8)
+    raster = np.zeros((height, width), dtype=rasterio.float32)
     # Prepare geometries and corresponding 'hoehe' values for rasterization
     shapes = ((mapping(geom), value) for geom, value in zip(gdf.geometry, gdf[height_attribute]))
 
@@ -69,7 +79,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         out_shape=raster.shape,
         transform=transform,
         fill=0,  # Background value
-        dtype=rasterio.uint8
+        dtype=rasterio.float32#dtype=rasterio.uint8
     )
     
     logging.info(f"Raster data type: {raster.dtype}, min={raster.min()}, max={raster.max()}")
@@ -83,7 +93,7 @@ def geojson_to_tiff(geojson_path, tiff_path, resolution=0.5, input_crs='EPSG:205
         height=height,
         width=width,
         count=1,
-        dtype=rasterio.uint8,
+        dtype=rasterio.float32,#dtype=rasterio.uint8,
         crs='EPSG:2056',  # Set the CRS to EPSG:2056
         transform=transform,
     ) as dst:

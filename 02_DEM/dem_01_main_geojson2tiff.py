@@ -12,7 +12,7 @@ This script is used to convert a geojson file to a tiff file, which later will b
 
 # Define paths and parameters
 # -----------------------------------------------
-base_path = "/Volumes/T7 Shield/GMP_Data/processed_data/00_Segmentation/"
+base_path = "/Volumes/T7 Shield/GMP2/00_Data/processed_data/00_Segmentation/"
 
 #input_geojson_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/01_Segmentation/output/old_national_1975_skeleton.geojson"
 #output_tiff_path = "/Users/mischabauckhage/Documents/ETH/02_Master/3_Semester/GMP2/gmp2/02_DEM/output/height_map_old_national_1975.png"
@@ -22,7 +22,7 @@ height_attribute = "height"
 img_formats = ['tif']
 
 
-years = [1912] # 1899,1912,1930,1939,1975
+years = [1899] # 1899,1912,1930,1939,1975
 # -----------------------------------------------
 
 

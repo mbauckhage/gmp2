@@ -23,11 +23,14 @@ def interpolate_raster(input_raster_path, output_raster_path,method='linear',sig
     non_zero_x = x_indices[non_zero_mask]
     non_zero_y = y_indices[non_zero_mask]
     non_zero_values = raster_data[non_zero_mask]
+    
+    min_value = np.min(non_zero_values)
+    
 
     # Step 3: Perform interpolation to fill in the gaps using griddata
     interpolated_raster = griddata(
         (non_zero_x, non_zero_y), non_zero_values,
-        (x_indices, y_indices), method=method, fill_value=0
+        (x_indices, y_indices), method=method, fill_value=min_value
     )
 
     # Optional: Apply a Gaussian filter to smooth the interpolated raster
