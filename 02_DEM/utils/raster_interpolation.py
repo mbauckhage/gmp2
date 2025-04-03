@@ -4,6 +4,7 @@ from scipy.interpolate import griddata
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 from PIL import Image
+from osgeo import gdal, osr
 
 
 
@@ -151,3 +152,53 @@ def make_img_square(input_img_path, output_img_path, method="max", align="center
 
     print(f"Squared image saved at: {output_img_path}")
 
+def reproject_and_clean_raster(input_path, output_path, src_epsg=2056, dst_epsg=4326):
+        """ 
+        Reproject raster from source EPSG to destination EPSG 
+        and replace zero values with the smallest non-zero value.
+        """
+
+        # Open source raster
+        src_ds = gdal.Open(input_path)
+        src_proj = osr.SpatialReference()
+        src_proj.ImportFromEPSG(src_epsg)
+
+        dst_proj = osr.SpatialReference()
+        dst_proj.ImportFromEPSG(dst_epsg)
+
+        # Reproject the raster
+        temp_output_path = output_path.replace(".tif", "_temp.tif")
+        gdal.Warp(
+            temp_output_path,
+            src_ds,
+            dstSRS=dst_proj.ExportToWkt(),
+            dstNodata=src_ds.GetRasterBand(1).GetNoDataValue(),
+            outputType=gdal.GDT_Float32,
+            resampleAlg=gdal.GRA_Lanczos  # High-quality resampling
+        )
+
+        # Open the reprojected raster and clean zero values
+        with rasterio.open(temp_output_path) as src:
+            data = src.read(1)
+
+            # Find the smallest nonzero value
+            min_nonzero = np.min(data[data > 0]) if np.any(data > 0) else 0
+
+            # Replace zero values with the minimum nonzero value
+            data[data == 0] = min_nonzero
+            
+            # set all borader values to zero
+            data[:, 0] = 0
+            data[:, -1] = 0
+            data[0, :] = 0
+            data[-1, :] = 0
+
+            # Write the final cleaned raster
+            profile = src.profile
+            with rasterio.open(output_path, 'w', **profile) as dst:
+                dst.write(data, 1)
+
+        # Remove temporary file
+        gdal.Unlink(temp_output_path)
+
+        print(f"Reprojected and cleaned raster saved at: {output_path}")
